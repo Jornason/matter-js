@@ -1,12 +1,10 @@
 var Example = Example || {};
 
-Example.slingshot = function() {
+Example.sensors = function() {
     var Engine = Matter.Engine,
         Render = Matter.Render,
         Runner = Matter.Runner,
-        Composites = Matter.Composites,
         Events = Matter.Events,
-        Constraint = Matter.Constraint,
         MouseConstraint = Matter.MouseConstraint,
         Mouse = Matter.Mouse,
         World = Matter.World,
@@ -23,7 +21,8 @@ Example.slingshot = function() {
         options: {
             width: Math.min(document.documentElement.clientWidth, 800),
             height: Math.min(document.documentElement.clientHeight, 600),
-            showAngleIndicator: true
+            wireframes: false,
+            background: '#111'
         }
     });
 
@@ -34,33 +33,65 @@ Example.slingshot = function() {
     Runner.run(runner, engine);
 
     // add bodies
-    var ground = Bodies.rectangle(395, 600, 815, 50, { isStatic: true }),
-        rockOptions = { density: 0.004 },
-        rock = Bodies.polygon(170, 450, 8, 20, rockOptions),
-        anchor = { x: 170, y: 450 },
-        elastic = Constraint.create({ 
-            pointA: anchor, 
-            bodyB: rock, 
-            stiffness: 0.05
-        });
+    var redColor = '#C44D58',
+        greenColor = '#C7F464';
 
-    var pyramid = Composites.pyramid(500, 300, 9, 10, 0, 0, function(x, y) {
-        return Bodies.rectangle(x, y, 25, 40);
+    var collider = Bodies.rectangle(400, 300, 500, 50, {
+        isSensor: true,
+        isStatic: true,
+        render: {
+            strokeStyle: redColor,
+            fillStyle: 'transparent',
+            lineWidth: 1
+        }
     });
 
-    var ground2 = Bodies.rectangle(610, 250, 200, 20, { isStatic: true });
+    World.add(world, [
+        collider,
+        Bodies.rectangle(400, 620, 800, 50, { 
+            isStatic: true,
+            render: {
+                fillStyle: 'transparent',
+                lineWidth: 1
+            }
+        })
+    ]);
 
-    var pyramid2 = Composites.pyramid(550, 0, 5, 10, 0, 0, function(x, y) {
-        return Bodies.rectangle(x, y, 25, 40);
+    World.add(world,
+        Bodies.circle(400, 40, 30, {
+            render: {
+                strokeStyle: greenColor,
+                fillStyle: 'transparent',
+                lineWidth: 1
+            }
+        })
+    );
+
+    Events.on(engine, 'collisionStart', function(event) {
+        var pairs = event.pairs;
+        
+        for (var i = 0, j = pairs.length; i != j; ++i) {
+            var pair = pairs[i];
+
+            if (pair.bodyA === collider) {
+                pair.bodyB.render.strokeStyle = redColor;
+            } else if (pair.bodyB === collider) {
+                pair.bodyA.render.strokeStyle = redColor;
+            }
+        }
     });
 
-    World.add(engine.world, [ground, pyramid, ground2, pyramid2, rock, elastic]);
+    Events.on(engine, 'collisionEnd', function(event) {
+        var pairs = event.pairs;
+        
+        for (var i = 0, j = pairs.length; i != j; ++i) {
+            var pair = pairs[i];
 
-    Events.on(engine, 'afterUpdate', function() {
-        if (mouseConstraint.mouse.button === -1 && (rock.position.x > 190 || rock.position.y < 430)) {
-            rock = Bodies.polygon(170, 450, 7, 20, rockOptions);
-            World.add(engine.world, rock);
-            elastic.bodyB = rock;
+            if (pair.bodyA === collider) {
+                pair.bodyB.render.strokeStyle = greenColor;
+            } else if (pair.bodyB === collider) {
+                pair.bodyA.render.strokeStyle = greenColor;
+            }
         }
     });
 
@@ -80,7 +111,7 @@ Example.slingshot = function() {
 
     // keep the mouse in sync with rendering
     render.mouse = mouse;
-
+    
     // fit the render viewport to the scene
     Render.lookAt(render, {
         min: { x: 0, y: 0 },

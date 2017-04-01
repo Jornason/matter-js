@@ -1,6 +1,6 @@
 var Example = Example || {};
 
-Example.mixed = function() {
+Example.gyro = function() {
     var Engine = Matter.Engine,
         Render = Matter.Render,
         Runner = Matter.Runner,
@@ -59,15 +59,35 @@ Example.mixed = function() {
         }
     });
 
-    World.add(world, stack);
-
     World.add(world, [
-        // walls
+        stack,
         Bodies.rectangle(400, 0, 800, 50, { isStatic: true }),
         Bodies.rectangle(400, 600, 800, 50, { isStatic: true }),
         Bodies.rectangle(800, 300, 50, 600, { isStatic: true }),
         Bodies.rectangle(0, 300, 50, 600, { isStatic: true })
     ]);
+
+    // add gyro control
+    var updateGravity = function(event) {
+        var orientation = typeof window.orientation !== 'undefined' ? window.orientation : 0,
+            gravity = engine.world.gravity;
+
+        if (orientation === 0) {
+            gravity.x = Common.clamp(event.gamma, -90, 90) / 90;
+            gravity.y = Common.clamp(event.beta, -90, 90) / 90;
+        } else if (orientation === 180) {
+            gravity.x = Common.clamp(event.gamma, -90, 90) / 90;
+            gravity.y = Common.clamp(-event.beta, -90, 90) / 90;
+        } else if (orientation === 90) {
+            gravity.x = Common.clamp(event.beta, -90, 90) / 90;
+            gravity.y = Common.clamp(-event.gamma, -90, 90) / 90;
+        } else if (orientation === -90) {
+            gravity.x = Common.clamp(-event.beta, -90, 90) / 90;
+            gravity.y = Common.clamp(event.gamma, -90, 90) / 90;
+        }
+    };
+
+    window.addEventListener('deviceorientation', updateGravity);
 
     // add mouse control
     var mouse = Mouse.create(render.canvas),
@@ -101,6 +121,7 @@ Example.mixed = function() {
         stop: function() {
             Matter.Render.stop(render);
             Matter.Runner.stop(runner);
+            window.removeEventListener('deviceorientation', updateGravity);
         }
     };
 };

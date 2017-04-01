@@ -50,6 +50,7 @@ var test = function() {
         _demo.engine.render = {};
         _demo.engine.render.options = {};
         _demo.runner = runner;
+        _demo.render = { options: {} };
 
         if (!(demo in Matter.Example)) {
             throw '\'' + demo + '\' is not defined in Matter.Example';
@@ -161,7 +162,8 @@ var getDemoNames = function() {
         skip = [
             'terrain', 'svg', 'concave', 
             'slingshot', 'views', 'raycasting', 
-            'events', 'collisionFiltering', 'sleeping'
+            'events', 'collisionFiltering', 'sleeping', 
+            'attractors'
         ];
 
     $('#demo-select option', fs.readFileSync('demo/index.html').toString())

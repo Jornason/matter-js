@@ -33,10 +33,8 @@ module.exports = Common;
             deepClone = true;
         }
 
-        args = Array.prototype.slice.call(arguments, argsStart);
-
-        for (var i = 0; i < args.length; i++) {
-            var source = args[i];
+        for (var i = argsStart; i < arguments.length; i++) {
+            var source = arguments[i];
 
             if (source) {
                 for (var prop in source) {
@@ -106,6 +104,41 @@ module.exports = Common;
         for (var key in obj)
             values.push(obj[key]);
         return values;
+    };
+
+    /**
+     * Gets a value from `base` relative to the `path` string.
+     * @method get
+     * @param {} obj The base object
+     * @param {string} path The path relative to `base`, e.g. 'Foo.Bar.baz'
+     * @param {number} [begin] Path slice begin
+     * @param {number} [end] Path slice end
+     * @return {} The object at the given path
+     */
+    Common.get = function(obj, path, begin, end) {
+        path = path.split('.').slice(begin, end);
+
+        for (var i = 0; i < path.length; i += 1) {
+            obj = obj[path[i]];
+        }
+
+        return obj;
+    };
+
+    /**
+     * Sets a value on `base` relative to the given `path` string.
+     * @method set
+     * @param {} obj The base object
+     * @param {string} path The path relative to `base`, e.g. 'Foo.Bar.baz'
+     * @param {} val The value to set
+     * @param {number} [begin] Path slice begin
+     * @param {number} [end] Path slice end
+     * @return {} Pass through `val` for chaining
+     */
+    Common.set = function(obj, path, val, begin, end) {
+        var parts = path.split('.').slice(begin, end);
+        Common.get(obj, path, 0, -1)[parts[parts.length - 1]] = val;
+        return val;
     };
 
     /**
@@ -182,6 +215,36 @@ module.exports = Common;
     Common.isArray = function(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
     };
+
+    /**
+     * Returns true if the object is a function.
+     * @method isFunction
+     * @param {object} obj
+     * @return {boolean} True if the object is a function, otherwise false
+     */
+    Common.isFunction = function(obj) {
+        return typeof obj === "function";
+    };
+
+    /**
+     * Returns true if the object is a plain object.
+     * @method isPlainObject
+     * @param {object} obj
+     * @return {boolean} True if the object is a plain object, otherwise false
+     */
+    Common.isPlainObject = function(obj) {
+        return typeof obj === 'object' && obj.constructor === Object;
+    };
+
+    /**
+     * Returns true if the object is a string.
+     * @method isString
+     * @param {object} obj
+     * @return {boolean} True if the object is a string, otherwise false
+     */
+    Common.isString = function(obj) {
+        return toString.call(obj) === '[object String]';
+    };
     
     /**
      * Returns the given value clamped between a minimum and maximum value.
@@ -231,7 +294,6 @@ module.exports = Common;
               
         return performance.now();
     };
-
     
     /**
      * Returns a random value between a minimum and a maximum value inclusive.
@@ -245,6 +307,12 @@ module.exports = Common;
         min = (typeof min !== "undefined") ? min : 0;
         max = (typeof max !== "undefined") ? max : 1;
         return min + _seededRandom() * (max - min);
+    };
+
+    var _seededRandom = function() {
+        // https://gist.github.com/ngryman/3830489
+        Common._seed = (Common._seed * 9301 + 49297) % 233280;
+        return Common._seed / 233280;
     };
 
     /**
@@ -266,24 +334,54 @@ module.exports = Common;
     };
 
     /**
-     * A wrapper for console.log, for providing errors and warnings.
-     * @method log
-     * @param {string} message
-     * @param {string} type
+     * The console logging level to use, where each level includes all levels above and excludes the levels below.
+     * The default level is 'debug' which shows all console messages.  
+     *
+     * Possible level values are:
+     * - 0 = None
+     * - 1 = Debug
+     * - 2 = Info
+     * - 3 = Warn
+     * - 4 = Error
+     * @property Common.logLevel
+     * @type {Number}
+     * @default 1
      */
-    Common.log = function(message, type) {
-        if (!console || !console.log || !console.warn)
-            return;
+    Common.logLevel = 1;
 
-        switch (type) {
+    /**
+     * Shows a `console.log` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method log
+     * @param ...objs {} The objects to log.
+     */
+    Common.log = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
+            console.log.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
+        }
+    };
 
-        case 'warn':
-            console.warn('Matter.js:', message);
-            break;
-        case 'error':
-            console.log('Matter.js:', message);
-            break;
+    /**
+     * Shows a `console.info` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method info
+     * @param ...objs {} The objects to log.
+     */
+    Common.info = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 2) {
+            console.info.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
+        }
+    };
 
+    /**
+     * Shows a `console.warn` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method warn
+     * @param ...objs {} The objects to log.
+     */
+    Common.warn = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
+            console.warn.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
         }
     };
 
@@ -301,6 +399,7 @@ module.exports = Common;
      * @method indexOf
      * @param {array} haystack
      * @param {object} needle
+     * @return {number} The position of needle in haystack, otherwise -1.
      */
     Common.indexOf = function(haystack, needle) {
         if (haystack.indexOf)
@@ -314,10 +413,152 @@ module.exports = Common;
         return -1;
     };
 
-    var _seededRandom = function() {
-        // https://gist.github.com/ngryman/3830489
-        Common._seed = (Common._seed * 9301 + 49297) % 233280;
-        return Common._seed / 233280;
+    /**
+     * A cross browser compatible array map implementation.
+     * @method map
+     * @param {array} list
+     * @param {function} func
+     * @return {array} Values from list transformed by func.
+     */
+    Common.map = function(list, func) {
+        if (list.map) {
+            return list.map(func);
+        }
+
+        var mapped = [];
+
+        for (var i = 0; i < list.length; i += 1) {
+            mapped.push(func(list[i]));
+        }
+
+        return mapped;
+    };
+
+    /**
+     * Takes a directed graph and returns the partially ordered set of vertices in topological order.
+     * Circular dependencies are allowed.
+     * @method topologicalSort
+     * @param {object} graph
+     * @return {array} Partially ordered set of vertices in topological order.
+     */
+    Common.topologicalSort = function(graph) {
+        // https://mgechev.github.io/javascript-algorithms/graphs_others_topological-sort.js.html
+        var result = [],
+            visited = [],
+            temp = [];
+
+        for (var node in graph) {
+            if (!visited[node] && !temp[node]) {
+                _topologicalSort(node, visited, temp, graph, result);
+            }
+        }
+
+        return result;
+    };
+
+    var _topologicalSort = function(node, visited, temp, graph, result) {
+        var neighbors = graph[node] || [];
+        temp[node] = true;
+
+        for (var i = 0; i < neighbors.length; i += 1) {
+            var neighbor = neighbors[i];
+
+            if (temp[neighbor]) {
+                // skip circular dependencies
+                continue;
+            }
+
+            if (!visited[neighbor]) {
+                _topologicalSort(neighbor, visited, temp, graph, result);
+            }
+        }
+
+        temp[node] = false;
+        visited[node] = true;
+
+        result.push(node);
+    };
+
+    /**
+     * Takes _n_ functions as arguments and returns a new function that calls them in order.
+     * The arguments applied when calling the new function will also be applied to every function passed.
+     * The value of `this` refers to the last value returned in the chain that was not `undefined`.
+     * Therefore if a passed function does not return a value, the previously returned value is maintained.
+     * After all passed functions have been called the new function returns the last returned value (if any).
+     * If any of the passed functions are a chain, then the chain will be flattened.
+     * @method chain
+     * @param ...funcs {function} The functions to chain.
+     * @return {function} A new function that calls the passed functions in order.
+     */
+    Common.chain = function() {
+        var funcs = [];
+
+        for (var i = 0; i < arguments.length; i += 1) {
+            var func = arguments[i];
+
+            if (func._chained) {
+                // flatten already chained functions
+                funcs.push.apply(funcs, func._chained);
+            } else {
+                funcs.push(func);
+            }
+        }
+
+        var chain = function() {
+            // https://github.com/GoogleChrome/devtools-docs/issues/53#issuecomment-51941358
+            var lastResult,
+                args = new Array(arguments.length);
+
+            for (var i = 0, l = arguments.length; i < l; i++) {
+                args[i] = arguments[i];
+            }
+
+            for (i = 0; i < funcs.length; i += 1) {
+                var result = funcs[i].apply(lastResult, args);
+
+                if (typeof result !== 'undefined') {
+                    lastResult = result;
+                }
+            }
+
+            return lastResult;
+        };
+
+        chain._chained = funcs;
+
+        return chain;
+    };
+
+    /**
+     * Chains a function to excute before the original function on the given `path` relative to `base`.
+     * See also docs for `Common.chain`.
+     * @method chainPathBefore
+     * @param {} base The base object
+     * @param {string} path The path relative to `base`
+     * @param {function} func The function to chain before the original
+     * @return {function} The chained function that replaced the original
+     */
+    Common.chainPathBefore = function(base, path, func) {
+        return Common.set(base, path, Common.chain(
+            func,
+            Common.get(base, path)
+        ));
+    };
+
+    /**
+     * Chains a function to excute after the original function on the given `path` relative to `base`.
+     * See also docs for `Common.chain`.
+     * @method chainPathAfter
+     * @param {} base The base object
+     * @param {string} path The path relative to `base`
+     * @param {function} func The function to chain after the original
+     * @return {function} The chained function that replaced the original
+     */
+    Common.chainPathAfter = function(base, path, func) {
+        return Common.set(base, path, Common.chain(
+            Common.get(base, path),
+            func
+        ));
     };
 
 })();

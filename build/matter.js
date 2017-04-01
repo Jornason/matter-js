@@ -1,5 +1,5 @@
 /**
-* matter-js 0.9.1 by @liabru 2016-02-15
+* matter-js 0.12.0 by @liabru 2017-02-02
 * http://brm.io/matter-js/
 * License MIT
 */
@@ -28,7 +28,7 @@
  * THE SOFTWARE.
  */
 
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Matter = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Matter = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 /**
 * The `Matter.Body` module contains methods for creating and manipulating body models.
 * A `Matter.Body` is a rigid body that can be simulated by a `Matter.Engine`.
@@ -43,13 +43,13 @@ var Body = {};
 
 module.exports = Body;
 
-var Vertices = require('../geometry/Vertices');
-var Vector = require('../geometry/Vector');
-var Sleeping = require('../core/Sleeping');
-var Render = require('../render/Render');
-var Common = require('../core/Common');
-var Bounds = require('../geometry/Bounds');
-var Axes = require('../geometry/Axes');
+var Vertices = _dereq_('../geometry/Vertices');
+var Vector = _dereq_('../geometry/Vector');
+var Sleeping = _dereq_('../core/Sleeping');
+var Render = _dereq_('../render/Render');
+var Common = _dereq_('../core/Common');
+var Bounds = _dereq_('../geometry/Bounds');
+var Axes = _dereq_('../geometry/Axes');
 
 (function() {
 
@@ -61,6 +61,7 @@ var Axes = require('../geometry/Axes');
     /**
      * Creates a new rigid body model. The options parameter is an object that specifies any properties you wish to override the defaults.
      * All properties have default values, and many are pre-calculated automatically based on other properties.
+     * Vertices must be specified in clockwise order.
      * See the properties section below for detailed information on what you can pass via the `options` object.
      * @method create
      * @param {} options
@@ -72,6 +73,7 @@ var Axes = require('../geometry/Axes');
             type: 'body',
             label: 'Body',
             parts: [],
+            plugin: {},
             angle: 0,
             vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40 L 0 40'),
             position: { x: 0, y: 0 },
@@ -84,6 +86,7 @@ var Axes = require('../geometry/Axes');
             angularSpeed: 0,
             velocity: { x: 0, y: 0 },
             angularVelocity: 0,
+            isSensor: false,
             isStatic: false,
             isSleeping: false,
             motion: 0,
@@ -109,7 +112,7 @@ var Axes = require('../geometry/Axes');
                     xOffset: 0,
                     yOffset: 0
                 },
-                lineWidth: 1.5
+                lineWidth: 0
             }
         };
 
@@ -151,9 +154,11 @@ var Axes = require('../geometry/Axes');
      * @method _initProperties
      * @private
      * @param {body} body
-     * @param {} options
+     * @param {} [options]
      */
     var _initProperties = function(body, options) {
+        options = options || {};
+
         // init required properties (order is important)
         Body.set(body, {
             bounds: body.bounds || Bounds.create(body.vertices),
@@ -179,7 +184,7 @@ var Axes = require('../geometry/Axes');
         });
 
         // render properties
-        var defaultFillStyle = (body.isStatic ? '#eeeeee' : Common.choose(['#556270', '#4ECDC4', '#C7F464', '#FF6B6B', '#C44D58'])),
+        var defaultFillStyle = (body.isStatic ? '#2e2b44' : Common.choose(['#006BA6', '#0496FF', '#FFBC42', '#D81159', '#8F2D56'])),
             defaultStrokeStyle = Common.shadeColor(defaultFillStyle, -20);
         body.render.fillStyle = body.render.fillStyle || defaultFillStyle;
         body.render.strokeStyle = body.render.strokeStyle || defaultStrokeStyle;
@@ -264,6 +269,16 @@ var Axes = require('../geometry/Axes');
             part.isStatic = isStatic;
 
             if (isStatic) {
+                part._original = {
+                    restitution: part.restitution,
+                    friction: part.friction,
+                    mass: part.mass,
+                    inertia: part.inertia,
+                    density: part.density,
+                    inverseMass: part.inverseMass,
+                    inverseInertia: part.inverseInertia
+                };
+
                 part.restitution = 0;
                 part.friction = 1;
                 part.mass = part.inertia = part.density = Infinity;
@@ -276,6 +291,16 @@ var Axes = require('../geometry/Axes');
                 part.speed = 0;
                 part.angularSpeed = 0;
                 part.motion = 0;
+            } else if (part._original) {
+                part.restitution = part._original.restitution;
+                part.friction = part._original.friction;
+                part.mass = part._original.mass;
+                part.inertia = part._original.inertia;
+                part.density = part._original.density;
+                part.inverseMass = part._original.inverseMass;
+                part.inverseInertia = part._original.inverseInertia;
+
+                delete part._original;
             }
         }
     };
@@ -535,6 +560,16 @@ var Axes = require('../geometry/Axes');
             Bounds.update(part.bounds, part.vertices, body.velocity);
         }
 
+        // handle circles
+        if (body.circleRadius) { 
+            if (scaleX === scaleY) {
+                body.circleRadius *= scaleX;
+            } else {
+                // body is no longer a circle
+                body.circleRadius = null;
+            }
+        }
+
         if (!body.isStatic) {
             var total = _totalProperties(body);
             body.area = total.area;
@@ -693,6 +728,7 @@ var Axes = require('../geometry/Axes');
      * @property type
      * @type string
      * @default "body"
+     * @readOnly
      */
 
     /**
@@ -713,6 +749,13 @@ var Axes = require('../geometry/Axes');
      *
      * @property parts
      * @type body[]
+     */
+
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
      */
 
     /**
@@ -815,6 +858,14 @@ var Axes = require('../geometry/Axes');
      * If you need to set a body as static after its creation, you should use `Body.setStatic` as this requires more than just setting this flag.
      *
      * @property isStatic
+     * @type boolean
+     * @default false
+     */
+
+    /**
+     * A flag that indicates whether a body is a sensor. Sensor triggers collision events, but doesn't react with colliding body physically.
+     *
+     * @property isSensor
      * @type boolean
      * @default false
      */
@@ -1137,7 +1188,7 @@ var Axes = require('../geometry/Axes');
 
 })();
 
-},{"../core/Common":14,"../core/Sleeping":20,"../geometry/Axes":23,"../geometry/Bounds":24,"../geometry/Vector":26,"../geometry/Vertices":27,"../render/Render":29}],2:[function(require,module,exports){
+},{"../core/Common":14,"../core/Sleeping":22,"../geometry/Axes":25,"../geometry/Bounds":26,"../geometry/Vector":28,"../geometry/Vertices":29,"../render/Render":31}],2:[function(_dereq_,module,exports){
 /**
 * The `Matter.Composite` module contains methods for creating and manipulating composite bodies.
 * A composite body is a collection of `Matter.Body`, `Matter.Constraint` and other `Matter.Composite`, therefore composites form a tree structure.
@@ -1153,9 +1204,9 @@ var Composite = {};
 
 module.exports = Composite;
 
-var Events = require('../core/Events');
-var Common = require('../core/Common');
-var Body = require('./Body');
+var Events = _dereq_('../core/Events');
+var Common = _dereq_('../core/Common');
+var Body = _dereq_('./Body');
 
 (function() {
 
@@ -1175,7 +1226,8 @@ var Body = require('./Body');
             bodies: [], 
             constraints: [], 
             composites: [],
-            label: 'Composite'
+            label: 'Composite',
+            plugin: {}
         }, options);
     };
 
@@ -1225,7 +1277,7 @@ var Body = require('./Body');
             case 'body':
                 // skip adding compound parts
                 if (obj.parent !== obj) {
-                    Common.log('Composite.add: skipped adding a compound body part (you must add its parent instead)', 'warn');
+                    Common.warn('Composite.add: skipped adding a compound body part (you must add its parent instead)');
                     break;
                 }
 
@@ -1736,6 +1788,7 @@ var Body = require('./Body');
      * @property type
      * @type string
      * @default "composite"
+     * @readOnly
      */
 
     /**
@@ -1794,9 +1847,16 @@ var Body = require('./Body');
      * @default []
      */
 
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
+     */
+
 })();
 
-},{"../core/Common":14,"../core/Events":16,"./Body":1}],3:[function(require,module,exports){
+},{"../core/Common":14,"../core/Events":16,"./Body":1}],3:[function(_dereq_,module,exports){
 /**
 * The `Matter.World` module contains methods for creating and manipulating the world composite.
 * A `Matter.World` is a `Matter.Composite` body, which is a collection of `Matter.Body`, `Matter.Constraint` and other `Matter.Composite`.
@@ -1814,9 +1874,9 @@ var World = {};
 
 module.exports = World;
 
-var Composite = require('./Composite');
-var Constraint = require('../constraint/Constraint');
-var Common = require('../core/Common');
+var Composite = _dereq_('./Composite');
+var Constraint = _dereq_('../constraint/Constraint');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -1884,6 +1944,14 @@ var Common = require('../core/Common');
      * @default 0.001
      */
 
+    /**
+     * A `Bounds` object that defines the world bounds for collision detection.
+     *
+     * @property bounds
+     * @type bounds
+     * @default { min: { x: -Infinity, y: -Infinity }, max: { x: Infinity, y: Infinity } }
+     */
+
     // World is a Composite body
     // see src/module/Outro.js for these aliases:
     
@@ -1920,7 +1988,7 @@ var Common = require('../core/Common');
 
 })();
 
-},{"../constraint/Constraint":12,"../core/Common":14,"./Composite":2}],4:[function(require,module,exports){
+},{"../constraint/Constraint":12,"../core/Common":14,"./Composite":2}],4:[function(_dereq_,module,exports){
 /**
 * The `Matter.Contact` module contains methods for creating and manipulating collision contacts.
 *
@@ -1960,7 +2028,7 @@ module.exports = Contact;
 
 })();
 
-},{}],5:[function(require,module,exports){
+},{}],5:[function(_dereq_,module,exports){
 /**
 * The `Matter.Detector` module contains methods for detecting collisions given a set of pairs.
 *
@@ -1973,9 +2041,9 @@ var Detector = {};
 
 module.exports = Detector;
 
-var SAT = require('./SAT');
-var Pair = require('./Pair');
-var Bounds = require('../geometry/Bounds');
+var SAT = _dereq_('./SAT');
+var Pair = _dereq_('./Pair');
+var Bounds = _dereq_('../geometry/Bounds');
 
 (function() {
 
@@ -2055,7 +2123,7 @@ var Bounds = require('../geometry/Bounds');
 
 })();
 
-},{"../geometry/Bounds":24,"./Pair":7,"./SAT":11}],6:[function(require,module,exports){
+},{"../geometry/Bounds":26,"./Pair":7,"./SAT":11}],6:[function(_dereq_,module,exports){
 /**
 * The `Matter.Grid` module contains methods for creating and manipulating collision broadphase grid structures.
 *
@@ -2066,9 +2134,9 @@ var Grid = {};
 
 module.exports = Grid;
 
-var Pair = require('./Pair');
-var Detector = require('./Detector');
-var Common = require('../core/Common');
+var Pair = _dereq_('./Pair');
+var Detector = _dereq_('./Detector');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -2091,6 +2159,22 @@ var Common = require('../core/Common');
 
         return Common.extend(defaults, options);
     };
+
+    /**
+     * The width of a single grid bucket.
+     *
+     * @property bucketWidth
+     * @type number
+     * @default 48
+     */
+
+    /**
+     * The height of a single grid bucket.
+     *
+     * @property bucketHeight
+     * @type number
+     * @default 48
+     */
 
     /**
      * Updates the grid.
@@ -2116,8 +2200,8 @@ var Common = require('../core/Common');
                 continue;
 
             // don't update out of world bodies
-            if (body.bounds.max.x < 0 || body.bounds.min.x > world.bounds.width
-                || body.bounds.max.y < 0 || body.bounds.min.y > world.bounds.height)
+            if (body.bounds.max.x < world.bounds.min.x || body.bounds.min.x > world.bounds.max.x
+                || body.bounds.max.y < world.bounds.min.y || body.bounds.min.y > world.bounds.max.y)
                 continue;
 
             var newRegion = _getRegion(grid, body);
@@ -2249,7 +2333,7 @@ var Common = require('../core/Common');
      * @return {string} bucket id
      */
     var _getBucketId = function(column, row) {
-        return column + ',' + row;
+        return 'C' + column + 'R' + row;
     };
 
     /**
@@ -2355,7 +2439,7 @@ var Common = require('../core/Common');
     
 })();
 
-},{"../core/Common":14,"./Detector":5,"./Pair":7}],7:[function(require,module,exports){
+},{"../core/Common":14,"./Detector":5,"./Pair":7}],7:[function(_dereq_,module,exports){
 /**
 * The `Matter.Pair` module contains methods for creating and manipulating collision pairs.
 *
@@ -2366,7 +2450,7 @@ var Pair = {};
 
 module.exports = Pair;
 
-var Contact = require('./Contact');
+var Contact = _dereq_('./Contact');
 
 (function() {
     
@@ -2391,6 +2475,7 @@ var Contact = require('./Contact');
             activeContacts: [],
             separation: 0,
             isActive: true,
+            isSensor: bodyA.isSensor || bodyB.isSensor,
             timeCreated: timestamp,
             timeUpdated: timestamp,
             inverseMass: parentA.inverseMass + parentB.inverseMass,
@@ -2474,15 +2559,15 @@ var Contact = require('./Contact');
      */
     Pair.id = function(bodyA, bodyB) {
         if (bodyA.id < bodyB.id) {
-            return bodyA.id + '_' + bodyB.id;
+            return 'A' + bodyA.id + 'B' + bodyB.id;
         } else {
-            return bodyB.id + '_' + bodyA.id;
+            return 'A' + bodyB.id + 'B' + bodyA.id;
         }
     };
 
 })();
 
-},{"./Contact":4}],8:[function(require,module,exports){
+},{"./Contact":4}],8:[function(_dereq_,module,exports){
 /**
 * The `Matter.Pairs` module contains methods for creating and manipulating collision pair sets.
 *
@@ -2493,8 +2578,8 @@ var Pairs = {};
 
 module.exports = Pairs;
 
-var Pair = require('./Pair');
-var Common = require('../core/Common');
+var Pair = _dereq_('./Pair');
+var Common = _dereq_('../core/Common');
 
 (function() {
     
@@ -2640,7 +2725,7 @@ var Common = require('../core/Common');
 
 })();
 
-},{"../core/Common":14,"./Pair":7}],9:[function(require,module,exports){
+},{"../core/Common":14,"./Pair":7}],9:[function(_dereq_,module,exports){
 /**
 * The `Matter.Query` module contains methods for performing collision queries.
 *
@@ -2653,11 +2738,11 @@ var Query = {};
 
 module.exports = Query;
 
-var Vector = require('../geometry/Vector');
-var SAT = require('./SAT');
-var Bounds = require('../geometry/Bounds');
-var Bodies = require('../factory/Bodies');
-var Vertices = require('../geometry/Vertices');
+var Vector = _dereq_('../geometry/Vector');
+var SAT = _dereq_('./SAT');
+var Bounds = _dereq_('../geometry/Bounds');
+var Bodies = _dereq_('../factory/Bodies');
+var Vertices = _dereq_('../geometry/Vertices');
 
 (function() {
 
@@ -2754,7 +2839,7 @@ var Vertices = require('../geometry/Vertices');
 
 })();
 
-},{"../factory/Bodies":21,"../geometry/Bounds":24,"../geometry/Vector":26,"../geometry/Vertices":27,"./SAT":11}],10:[function(require,module,exports){
+},{"../factory/Bodies":23,"../geometry/Bounds":26,"../geometry/Vector":28,"../geometry/Vertices":29,"./SAT":11}],10:[function(_dereq_,module,exports){
 /**
 * The `Matter.Resolver` module contains methods for resolving collision pairs.
 *
@@ -2765,10 +2850,10 @@ var Resolver = {};
 
 module.exports = Resolver;
 
-var Vertices = require('../geometry/Vertices');
-var Vector = require('../geometry/Vector');
-var Common = require('../core/Common');
-var Bounds = require('../geometry/Bounds');
+var Vertices = _dereq_('../geometry/Vertices');
+var Vector = _dereq_('../geometry/Vector');
+var Common = _dereq_('../core/Common');
+var Bounds = _dereq_('../geometry/Bounds');
 
 (function() {
 
@@ -2827,9 +2912,9 @@ var Bounds = require('../geometry/Bounds');
         for (i = 0; i < pairs.length; i++) {
             pair = pairs[i];
             
-            if (!pair.isActive)
+            if (!pair.isActive || pair.isSensor)
                 continue;
-            
+
             collision = pair.collision;
             bodyA = collision.parentA;
             bodyB = collision.parentB;
@@ -2846,7 +2931,7 @@ var Bounds = require('../geometry/Bounds');
         for (i = 0; i < pairs.length; i++) {
             pair = pairs[i];
 
-            if (!pair.isActive || pair.separation < 0)
+            if (!pair.isActive || pair.isSensor || pair.separation < 0)
                 continue;
             
             collision = pair.collision;
@@ -2854,7 +2939,7 @@ var Bounds = require('../geometry/Bounds');
             bodyB = collision.parentB;
             normal = collision.normal;
             positionImpulse = (pair.separation - pair.slop) * timeScale;
-        
+
             if (bodyA.isStatic || bodyB.isStatic)
                 positionImpulse *= 2;
             
@@ -2937,7 +3022,7 @@ var Bounds = require('../geometry/Bounds');
         for (i = 0; i < pairs.length; i++) {
             pair = pairs[i];
             
-            if (!pair.isActive)
+            if (!pair.isActive || pair.isSensor)
                 continue;
             
             contacts = pair.activeContacts;
@@ -2946,7 +3031,7 @@ var Bounds = require('../geometry/Bounds');
             bodyB = collision.parentB;
             normal = collision.normal;
             tangent = collision.tangent;
-                
+
             // resolve each contact
             for (j = 0; j < contacts.length; j++) {
                 contact = contacts[j];
@@ -2996,7 +3081,7 @@ var Bounds = require('../geometry/Bounds');
         for (var i = 0; i < pairs.length; i++) {
             var pair = pairs[i];
             
-            if (!pair.isActive)
+            if (!pair.isActive || pair.isSensor)
                 continue;
             
             var collision = pair.collision,
@@ -3100,7 +3185,7 @@ var Bounds = require('../geometry/Bounds');
 
 })();
 
-},{"../core/Common":14,"../geometry/Bounds":24,"../geometry/Vector":26,"../geometry/Vertices":27}],11:[function(require,module,exports){
+},{"../core/Common":14,"../geometry/Bounds":26,"../geometry/Vector":28,"../geometry/Vertices":29}],11:[function(_dereq_,module,exports){
 /**
 * The `Matter.SAT` module contains methods for detecting collisions using the Separating Axis Theorem.
 *
@@ -3113,8 +3198,8 @@ var SAT = {};
 
 module.exports = SAT;
 
-var Vertices = require('../geometry/Vertices');
-var Vector = require('../geometry/Vector');
+var Vertices = _dereq_('../geometry/Vertices');
+var Vector = _dereq_('../geometry/Vector');
 
 (function() {
 
@@ -3131,10 +3216,9 @@ var Vector = require('../geometry/Vector');
             overlapBA, 
             minOverlap,
             collision,
-            prevCol = previousCollision,
             canReusePrevCol = false;
 
-        if (prevCol) {
+        if (previousCollision) {
             // estimate total motion
             var parentA = bodyA.parent,
                 parentB = bodyB.parent,
@@ -3143,20 +3227,20 @@ var Vector = require('../geometry/Vector');
 
             // we may be able to (partially) reuse collision result 
             // but only safe if collision was resting
-            canReusePrevCol = prevCol && prevCol.collided && motion < 0.2;
+            canReusePrevCol = previousCollision && previousCollision.collided && motion < 0.2;
 
             // reuse collision object
-            collision = prevCol;
+            collision = previousCollision;
         } else {
             collision = { collided: false, bodyA: bodyA, bodyB: bodyB };
         }
 
-        if (prevCol && canReusePrevCol) {
+        if (previousCollision && canReusePrevCol) {
             // if we can reuse the collision result
             // we only need to test the previously found axis
             var axisBodyA = collision.axisBody,
                 axisBodyB = axisBodyA === bodyA ? bodyB : bodyA,
-                axes = [axisBodyA.axes[prevCol.axisNumber]];
+                axes = [axisBodyA.axes[previousCollision.axisNumber]];
 
             minOverlap = _overlapAxes(axisBodyA.vertices, axisBodyB.vertices, axes);
             collision.reused = true;
@@ -3197,7 +3281,6 @@ var Vector = require('../geometry/Vector');
         collision.bodyA = bodyA.id < bodyB.id ? bodyA : bodyB;
         collision.bodyB = bodyA.id < bodyB.id ? bodyB : bodyA;
         collision.collided = true;
-        collision.normal = minOverlap.axis;
         collision.depth = minOverlap.overlap;
         collision.parentA = collision.bodyA.parent;
         collision.parentB = collision.bodyB.parent;
@@ -3206,20 +3289,27 @@ var Vector = require('../geometry/Vector');
         bodyB = collision.bodyB;
 
         // ensure normal is facing away from bodyA
-        if (Vector.dot(collision.normal, Vector.sub(bodyB.position, bodyA.position)) > 0) 
-            collision.normal = Vector.neg(collision.normal);
+        if (Vector.dot(minOverlap.axis, Vector.sub(bodyB.position, bodyA.position)) < 0) {
+            collision.normal = {
+                x: minOverlap.axis.x,
+                y: minOverlap.axis.y
+            };
+        } else {
+            collision.normal = {
+                x: -minOverlap.axis.x,
+                y: -minOverlap.axis.y
+            };
+        }
 
         collision.tangent = Vector.perp(collision.normal);
 
-        collision.penetration = { 
-            x: collision.normal.x * collision.depth, 
-            y: collision.normal.y * collision.depth 
-        };
+        collision.penetration = collision.penetration || {};
+        collision.penetration.x = collision.normal.x * collision.depth;
+        collision.penetration.y = collision.normal.y * collision.depth; 
 
         // find support points, there is always either exactly one or two
         var verticesB = _findSupports(bodyA, bodyB, collision.normal),
-            supports = collision.supports || [];
-        supports.length = 0;
+            supports = [];
 
         // find the supports from bodyB that are inside bodyA
         if (Vertices.contains(bodyA.vertices, verticesB[0]))
@@ -3367,7 +3457,7 @@ var Vector = require('../geometry/Vector');
 
 })();
 
-},{"../geometry/Vector":26,"../geometry/Vertices":27}],12:[function(require,module,exports){
+},{"../geometry/Vector":28,"../geometry/Vertices":29}],12:[function(_dereq_,module,exports){
 /**
 * The `Matter.Constraint` module contains methods for creating and manipulating constraints.
 * Constraints are used for specifying that a fixed distance must be maintained between two bodies (or a body and a fixed world-space position).
@@ -3390,12 +3480,12 @@ var Constraint = {};
 
 module.exports = Constraint;
 
-var Vertices = require('../geometry/Vertices');
-var Vector = require('../geometry/Vector');
-var Sleeping = require('../core/Sleeping');
-var Bounds = require('../geometry/Bounds');
-var Axes = require('../geometry/Axes');
-var Common = require('../core/Common');
+var Vertices = _dereq_('../geometry/Vertices');
+var Vector = _dereq_('../geometry/Vector');
+var Sleeping = _dereq_('../core/Sleeping');
+var Bounds = _dereq_('../geometry/Bounds');
+var Axes = _dereq_('../geometry/Axes');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -3430,7 +3520,7 @@ var Common = require('../core/Common');
         var render = {
             visible: true,
             lineWidth: 2,
-            strokeStyle: '#666'
+            strokeStyle: '#ffffff'
         };
         
         constraint.render = Common.extend(render, constraint.render);
@@ -3443,6 +3533,7 @@ var Common = require('../core/Common');
         constraint.angularStiffness = constraint.angularStiffness || 0;
         constraint.angleA = constraint.bodyA ? constraint.bodyA.angle : constraint.angleA;
         constraint.angleB = constraint.bodyB ? constraint.bodyB.angle : constraint.angleB;
+        constraint.plugin = {};
 
         return constraint;
     };
@@ -3667,6 +3758,7 @@ var Common = require('../core/Common');
      * @property type
      * @type string
      * @default "constraint"
+     * @readOnly
      */
 
     /**
@@ -3760,9 +3852,16 @@ var Common = require('../core/Common');
      * @type number
      */
 
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
+     */
+
 })();
 
-},{"../core/Common":14,"../core/Sleeping":20,"../geometry/Axes":23,"../geometry/Bounds":24,"../geometry/Vector":26,"../geometry/Vertices":27}],13:[function(require,module,exports){
+},{"../core/Common":14,"../core/Sleeping":22,"../geometry/Axes":25,"../geometry/Bounds":26,"../geometry/Vector":28,"../geometry/Vertices":29}],13:[function(_dereq_,module,exports){
 /**
 * The `Matter.MouseConstraint` module contains methods for creating mouse constraints.
 * Mouse constraints are used for allowing user interaction, providing the ability to move bodies via the mouse or touch.
@@ -3776,15 +3875,15 @@ var MouseConstraint = {};
 
 module.exports = MouseConstraint;
 
-var Vertices = require('../geometry/Vertices');
-var Sleeping = require('../core/Sleeping');
-var Mouse = require('../core/Mouse');
-var Events = require('../core/Events');
-var Detector = require('../collision/Detector');
-var Constraint = require('./Constraint');
-var Composite = require('../body/Composite');
-var Common = require('../core/Common');
-var Bounds = require('../geometry/Bounds');
+var Vertices = _dereq_('../geometry/Vertices');
+var Sleeping = _dereq_('../core/Sleeping');
+var Mouse = _dereq_('../core/Mouse');
+var Events = _dereq_('../core/Events');
+var Detector = _dereq_('../collision/Detector');
+var Constraint = _dereq_('./Constraint');
+var Composite = _dereq_('../body/Composite');
+var Common = _dereq_('../core/Common');
+var Bounds = _dereq_('../geometry/Bounds');
 
 (function() {
 
@@ -3803,9 +3902,11 @@ var Bounds = require('../geometry/Bounds');
         if (!mouse) {
             if (engine && engine.render && engine.render.canvas) {
                 mouse = Mouse.create(engine.render.canvas);
+            } else if (options && options.element) {
+                mouse = Mouse.create(options.element);
             } else {
                 mouse = Mouse.create();
-                Common.log('MouseConstraint.create: options.mouse was undefined, engine.render.canvas was undefined, may not function as expected', 'warn');
+                Common.warn('MouseConstraint.create: options.mouse was undefined, options.element was undefined, may not function as expected');
             }
         }
 
@@ -3825,6 +3926,7 @@ var Bounds = require('../geometry/Bounds');
         var defaults = {
             type: 'mouseConstraint',
             mouse: mouse,
+            element: null,
             body: null,
             constraint: constraint,
             collisionFilter: {
@@ -3836,7 +3938,7 @@ var Bounds = require('../geometry/Bounds');
 
         var mouseConstraint = Common.extend(defaults, options);
 
-        Events.on(engine, 'tick', function() {
+        Events.on(engine, 'beforeUpdate', function() {
             var allBodies = Composite.allBodies(engine.world);
             MouseConstraint.update(mouseConstraint, allBodies);
             _triggerEvents(mouseConstraint);
@@ -3985,6 +4087,7 @@ var Bounds = require('../geometry/Bounds');
      * @property type
      * @type string
      * @default "constraint"
+     * @readOnly
      */
 
     /**
@@ -4021,7 +4124,7 @@ var Bounds = require('../geometry/Bounds');
 
 })();
 
-},{"../body/Composite":2,"../collision/Detector":5,"../core/Common":14,"../core/Events":16,"../core/Mouse":18,"../core/Sleeping":20,"../geometry/Bounds":24,"../geometry/Vertices":27,"./Constraint":12}],14:[function(require,module,exports){
+},{"../body/Composite":2,"../collision/Detector":5,"../core/Common":14,"../core/Events":16,"../core/Mouse":19,"../core/Sleeping":22,"../geometry/Bounds":26,"../geometry/Vertices":29,"./Constraint":12}],14:[function(_dereq_,module,exports){
 /**
 * The `Matter.Common` module contains utility functions that are common to all modules.
 *
@@ -4057,10 +4160,8 @@ module.exports = Common;
             deepClone = true;
         }
 
-        args = Array.prototype.slice.call(arguments, argsStart);
-
-        for (var i = 0; i < args.length; i++) {
-            var source = args[i];
+        for (var i = argsStart; i < arguments.length; i++) {
+            var source = arguments[i];
 
             if (source) {
                 for (var prop in source) {
@@ -4130,6 +4231,41 @@ module.exports = Common;
         for (var key in obj)
             values.push(obj[key]);
         return values;
+    };
+
+    /**
+     * Gets a value from `base` relative to the `path` string.
+     * @method get
+     * @param {} obj The base object
+     * @param {string} path The path relative to `base`, e.g. 'Foo.Bar.baz'
+     * @param {number} [begin] Path slice begin
+     * @param {number} [end] Path slice end
+     * @return {} The object at the given path
+     */
+    Common.get = function(obj, path, begin, end) {
+        path = path.split('.').slice(begin, end);
+
+        for (var i = 0; i < path.length; i += 1) {
+            obj = obj[path[i]];
+        }
+
+        return obj;
+    };
+
+    /**
+     * Sets a value on `base` relative to the given `path` string.
+     * @method set
+     * @param {} obj The base object
+     * @param {string} path The path relative to `base`, e.g. 'Foo.Bar.baz'
+     * @param {} val The value to set
+     * @param {number} [begin] Path slice begin
+     * @param {number} [end] Path slice end
+     * @return {} Pass through `val` for chaining
+     */
+    Common.set = function(obj, path, val, begin, end) {
+        var parts = path.split('.').slice(begin, end);
+        Common.get(obj, path, 0, -1)[parts[parts.length - 1]] = val;
+        return val;
     };
 
     /**
@@ -4206,6 +4342,36 @@ module.exports = Common;
     Common.isArray = function(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
     };
+
+    /**
+     * Returns true if the object is a function.
+     * @method isFunction
+     * @param {object} obj
+     * @return {boolean} True if the object is a function, otherwise false
+     */
+    Common.isFunction = function(obj) {
+        return typeof obj === "function";
+    };
+
+    /**
+     * Returns true if the object is a plain object.
+     * @method isPlainObject
+     * @param {object} obj
+     * @return {boolean} True if the object is a plain object, otherwise false
+     */
+    Common.isPlainObject = function(obj) {
+        return typeof obj === 'object' && obj.constructor === Object;
+    };
+
+    /**
+     * Returns true if the object is a string.
+     * @method isString
+     * @param {object} obj
+     * @return {boolean} True if the object is a string, otherwise false
+     */
+    Common.isString = function(obj) {
+        return toString.call(obj) === '[object String]';
+    };
     
     /**
      * Returns the given value clamped between a minimum and maximum value.
@@ -4255,7 +4421,6 @@ module.exports = Common;
               
         return performance.now();
     };
-
     
     /**
      * Returns a random value between a minimum and a maximum value inclusive.
@@ -4269,6 +4434,12 @@ module.exports = Common;
         min = (typeof min !== "undefined") ? min : 0;
         max = (typeof max !== "undefined") ? max : 1;
         return min + _seededRandom() * (max - min);
+    };
+
+    var _seededRandom = function() {
+        // https://gist.github.com/ngryman/3830489
+        Common._seed = (Common._seed * 9301 + 49297) % 233280;
+        return Common._seed / 233280;
     };
 
     /**
@@ -4290,24 +4461,54 @@ module.exports = Common;
     };
 
     /**
-     * A wrapper for console.log, for providing errors and warnings.
-     * @method log
-     * @param {string} message
-     * @param {string} type
+     * The console logging level to use, where each level includes all levels above and excludes the levels below.
+     * The default level is 'debug' which shows all console messages.  
+     *
+     * Possible level values are:
+     * - 0 = None
+     * - 1 = Debug
+     * - 2 = Info
+     * - 3 = Warn
+     * - 4 = Error
+     * @property Common.logLevel
+     * @type {Number}
+     * @default 1
      */
-    Common.log = function(message, type) {
-        if (!console || !console.log || !console.warn)
-            return;
+    Common.logLevel = 1;
 
-        switch (type) {
+    /**
+     * Shows a `console.log` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method log
+     * @param ...objs {} The objects to log.
+     */
+    Common.log = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
+            console.log.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
+        }
+    };
 
-        case 'warn':
-            console.warn('Matter.js:', message);
-            break;
-        case 'error':
-            console.log('Matter.js:', message);
-            break;
+    /**
+     * Shows a `console.info` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method info
+     * @param ...objs {} The objects to log.
+     */
+    Common.info = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 2) {
+            console.info.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
+        }
+    };
 
+    /**
+     * Shows a `console.warn` message only if the current `Common.logLevel` allows it.
+     * The message will be prefixed with 'matter-js' to make it easily identifiable.
+     * @method warn
+     * @param ...objs {} The objects to log.
+     */
+    Common.warn = function() {
+        if (console && Common.logLevel > 0 && Common.logLevel <= 3) {
+            console.warn.apply(console, ['matter-js:'].concat(Array.prototype.slice.call(arguments)));
         }
     };
 
@@ -4325,6 +4526,7 @@ module.exports = Common;
      * @method indexOf
      * @param {array} haystack
      * @param {object} needle
+     * @return {number} The position of needle in haystack, otherwise -1.
      */
     Common.indexOf = function(haystack, needle) {
         if (haystack.indexOf)
@@ -4338,15 +4540,157 @@ module.exports = Common;
         return -1;
     };
 
-    var _seededRandom = function() {
-        // https://gist.github.com/ngryman/3830489
-        Common._seed = (Common._seed * 9301 + 49297) % 233280;
-        return Common._seed / 233280;
+    /**
+     * A cross browser compatible array map implementation.
+     * @method map
+     * @param {array} list
+     * @param {function} func
+     * @return {array} Values from list transformed by func.
+     */
+    Common.map = function(list, func) {
+        if (list.map) {
+            return list.map(func);
+        }
+
+        var mapped = [];
+
+        for (var i = 0; i < list.length; i += 1) {
+            mapped.push(func(list[i]));
+        }
+
+        return mapped;
+    };
+
+    /**
+     * Takes a directed graph and returns the partially ordered set of vertices in topological order.
+     * Circular dependencies are allowed.
+     * @method topologicalSort
+     * @param {object} graph
+     * @return {array} Partially ordered set of vertices in topological order.
+     */
+    Common.topologicalSort = function(graph) {
+        // https://mgechev.github.io/javascript-algorithms/graphs_others_topological-sort.js.html
+        var result = [],
+            visited = [],
+            temp = [];
+
+        for (var node in graph) {
+            if (!visited[node] && !temp[node]) {
+                _topologicalSort(node, visited, temp, graph, result);
+            }
+        }
+
+        return result;
+    };
+
+    var _topologicalSort = function(node, visited, temp, graph, result) {
+        var neighbors = graph[node] || [];
+        temp[node] = true;
+
+        for (var i = 0; i < neighbors.length; i += 1) {
+            var neighbor = neighbors[i];
+
+            if (temp[neighbor]) {
+                // skip circular dependencies
+                continue;
+            }
+
+            if (!visited[neighbor]) {
+                _topologicalSort(neighbor, visited, temp, graph, result);
+            }
+        }
+
+        temp[node] = false;
+        visited[node] = true;
+
+        result.push(node);
+    };
+
+    /**
+     * Takes _n_ functions as arguments and returns a new function that calls them in order.
+     * The arguments applied when calling the new function will also be applied to every function passed.
+     * The value of `this` refers to the last value returned in the chain that was not `undefined`.
+     * Therefore if a passed function does not return a value, the previously returned value is maintained.
+     * After all passed functions have been called the new function returns the last returned value (if any).
+     * If any of the passed functions are a chain, then the chain will be flattened.
+     * @method chain
+     * @param ...funcs {function} The functions to chain.
+     * @return {function} A new function that calls the passed functions in order.
+     */
+    Common.chain = function() {
+        var funcs = [];
+
+        for (var i = 0; i < arguments.length; i += 1) {
+            var func = arguments[i];
+
+            if (func._chained) {
+                // flatten already chained functions
+                funcs.push.apply(funcs, func._chained);
+            } else {
+                funcs.push(func);
+            }
+        }
+
+        var chain = function() {
+            // https://github.com/GoogleChrome/devtools-docs/issues/53#issuecomment-51941358
+            var lastResult,
+                args = new Array(arguments.length);
+
+            for (var i = 0, l = arguments.length; i < l; i++) {
+                args[i] = arguments[i];
+            }
+
+            for (i = 0; i < funcs.length; i += 1) {
+                var result = funcs[i].apply(lastResult, args);
+
+                if (typeof result !== 'undefined') {
+                    lastResult = result;
+                }
+            }
+
+            return lastResult;
+        };
+
+        chain._chained = funcs;
+
+        return chain;
+    };
+
+    /**
+     * Chains a function to excute before the original function on the given `path` relative to `base`.
+     * See also docs for `Common.chain`.
+     * @method chainPathBefore
+     * @param {} base The base object
+     * @param {string} path The path relative to `base`
+     * @param {function} func The function to chain before the original
+     * @return {function} The chained function that replaced the original
+     */
+    Common.chainPathBefore = function(base, path, func) {
+        return Common.set(base, path, Common.chain(
+            func,
+            Common.get(base, path)
+        ));
+    };
+
+    /**
+     * Chains a function to excute after the original function on the given `path` relative to `base`.
+     * See also docs for `Common.chain`.
+     * @method chainPathAfter
+     * @param {} base The base object
+     * @param {string} path The path relative to `base`
+     * @param {function} func The function to chain after the original
+     * @return {function} The chained function that replaced the original
+     */
+    Common.chainPathAfter = function(base, path, func) {
+        return Common.set(base, path, Common.chain(
+            Common.get(base, path),
+            func
+        ));
     };
 
 })();
 
-},{}],15:[function(require,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 /**
 * The `Matter.Engine` module contains methods for creating and manipulating engines.
 * An engine is a controller that manages updating the simulation of the world.
@@ -4361,18 +4705,18 @@ var Engine = {};
 
 module.exports = Engine;
 
-var World = require('../body/World');
-var Sleeping = require('./Sleeping');
-var Resolver = require('../collision/Resolver');
-var Render = require('../render/Render');
-var Pairs = require('../collision/Pairs');
-var Metrics = require('./Metrics');
-var Grid = require('../collision/Grid');
-var Events = require('./Events');
-var Composite = require('../body/Composite');
-var Constraint = require('../constraint/Constraint');
-var Common = require('./Common');
-var Body = require('../body/Body');
+var World = _dereq_('../body/World');
+var Sleeping = _dereq_('./Sleeping');
+var Resolver = _dereq_('../collision/Resolver');
+var Render = _dereq_('../render/Render');
+var Pairs = _dereq_('../collision/Pairs');
+var Metrics = _dereq_('./Metrics');
+var Grid = _dereq_('../collision/Grid');
+var Events = _dereq_('./Events');
+var Composite = _dereq_('../body/Composite');
+var Constraint = _dereq_('../constraint/Constraint');
+var Common = _dereq_('./Common');
+var Body = _dereq_('../body/Body');
 
 (function() {
 
@@ -4381,15 +4725,18 @@ var Body = require('../body/Body');
      * All properties have default values, and many are pre-calculated automatically based on other properties.
      * See the properties section below for detailed information on what you can pass via the `options` object.
      * @method create
-     * @param {HTMLElement} element
      * @param {object} [options]
      * @return {engine} engine
      */
     Engine.create = function(element, options) {
-
         // options may be passed as the first (and only) argument
         options = Common.isElement(element) ? options : element;
         element = Common.isElement(element) ? element : null;
+        options = options || {};
+
+        if (element || options.render) {
+            Common.warn('Engine.create: engine.render is deprecated (see docs)');
+        }
 
         var defaults = {
             positionIterations: 6,
@@ -4397,6 +4744,7 @@ var Body = require('../body/Body');
             constraintIterations: 2,
             enableSleeping: false,
             events: [],
+            plugin: {},
             timing: {
                 timestamp: 0,
                 timeScale: 1
@@ -4408,6 +4756,7 @@ var Body = require('../body/Body');
 
         var engine = Common.extend(defaults, options);
 
+        // @deprecated
         if (element || engine.render) {
             var renderDefaults = {
                 element: element,
@@ -4417,11 +4766,17 @@ var Body = require('../body/Body');
             engine.render = Common.extend(renderDefaults, engine.render);
         }
 
+        // @deprecated
         if (engine.render && engine.render.controller) {
             engine.render = engine.render.controller.create(engine.render);
         }
 
-        engine.world = World.create(engine.world);
+        // @deprecated
+        if (engine.render) {
+            engine.render.engine = engine;
+        }
+
+        engine.world = options.world || World.create(engine.world);
         engine.pairs = Pairs.create();
         engine.broadphase = engine.broadphase.controller.create(engine.broadphase);
         engine.metrics = engine.metrics || { extended: false };
@@ -4502,6 +4857,11 @@ var Body = require('../body/Body');
             broadphasePairs = allBodies;
         }
 
+        // clear all composite modified flags
+        if (world.isModified) {
+            Composite.setModified(world, false, false, true);
+        }
+
         // narrowphase pass: find actual collisions, then create or update collision pairs
         var collisions = broadphase.detector(broadphasePairs, engine);
 
@@ -4542,10 +4902,6 @@ var Body = require('../body/Body');
 
         // clear force buffers
         _bodiesClearForces(allBodies);
-
-        // clear all composite modified flags
-        if (world.isModified)
-            Composite.setModified(world, false, false, true);
 
         Events.trigger(engine, 'afterUpdate', event);
 
@@ -4798,6 +5154,7 @@ var Body = require('../body/Body');
      *
      * @property render
      * @type render
+     * @deprecated see Demo.js for an example of creating a renderer
      * @default a Matter.Render instance
      */
 
@@ -4817,9 +5174,16 @@ var Body = require('../body/Body');
      * @default a Matter.World instance
      */
 
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
+     */
+
 })();
 
-},{"../body/Body":1,"../body/Composite":2,"../body/World":3,"../collision/Grid":6,"../collision/Pairs":8,"../collision/Resolver":10,"../constraint/Constraint":12,"../render/Render":29,"./Common":14,"./Events":16,"./Metrics":17,"./Sleeping":20}],16:[function(require,module,exports){
+},{"../body/Body":1,"../body/Composite":2,"../body/World":3,"../collision/Grid":6,"../collision/Pairs":8,"../collision/Resolver":10,"../constraint/Constraint":12,"../render/Render":31,"./Common":14,"./Events":16,"./Metrics":18,"./Sleeping":22}],16:[function(_dereq_,module,exports){
 /**
 * The `Matter.Events` module contains methods to fire and listen to events on other objects.
 *
@@ -4832,7 +5196,7 @@ var Events = {};
 
 module.exports = Events;
 
-var Common = require('./Common');
+var Common = _dereq_('./Common');
 
 (function() {
 
@@ -4931,9 +5295,97 @@ var Common = require('./Common');
 
 })();
 
-},{"./Common":14}],17:[function(require,module,exports){
+},{"./Common":14}],17:[function(_dereq_,module,exports){
+/**
+* The `Matter` module is the top level namespace. It also includes a function for installing plugins on top of the library.
+*
+* @class Matter
+*/
 
-},{"../body/Composite":2,"./Common":14}],18:[function(require,module,exports){
+var Matter = {};
+
+module.exports = Matter;
+
+var Plugin = _dereq_('./Plugin');
+var Common = _dereq_('./Common');
+
+(function() {
+
+    /**
+     * The library name.
+     * @property name
+     * @readOnly
+     * @type {String}
+     */
+    Matter.name = 'matter-js';
+
+    /**
+     * The library version.
+     * @property version
+     * @readOnly
+     * @type {String}
+     */
+    Matter.version = '0.12.0';
+
+    /**
+     * A list of plugin dependencies to be installed. These are normally set and installed through `Matter.use`.
+     * Alternatively you may set `Matter.uses` manually and install them by calling `Plugin.use(Matter)`.
+     * @property uses
+     * @type {Array}
+     */
+    Matter.uses = [];
+
+    /**
+     * The plugins that have been installed through `Matter.Plugin.install`. Read only.
+     * @property used
+     * @readOnly
+     * @type {Array}
+     */
+    Matter.used = [];
+
+    /**
+     * Installs the given plugins on the `Matter` namespace.
+     * This is a short-hand for `Plugin.use`, see it for more information.
+     * Call this function once at the start of your code, with all of the plugins you wish to install as arguments.
+     * Avoid calling this function multiple times unless you intend to manually control installation order.
+     * @method use
+     * @param ...plugin {Function} The plugin(s) to install on `base` (multi-argument).
+     */
+    Matter.use = function() {
+        Plugin.use(Matter, Array.prototype.slice.call(arguments));
+    };
+
+    /**
+     * Chains a function to excute before the original function on the given `path` relative to `Matter`.
+     * See also docs for `Common.chain`.
+     * @method before
+     * @param {string} path The path relative to `Matter`
+     * @param {function} func The function to chain before the original
+     * @return {function} The chained function that replaced the original
+     */
+    Matter.before = function(path, func) {
+        path = path.replace(/^Matter./, '');
+        return Common.chainPathBefore(Matter, path, func);
+    };
+
+    /**
+     * Chains a function to excute after the original function on the given `path` relative to `Matter`.
+     * See also docs for `Common.chain`.
+     * @method after
+     * @param {string} path The path relative to `Matter`
+     * @param {function} func The function to chain after the original
+     * @return {function} The chained function that replaced the original
+     */
+    Matter.after = function(path, func) {
+        path = path.replace(/^Matter./, '');
+        return Common.chainPathAfter(Matter, path, func);
+    };
+
+})();
+
+},{"./Common":14,"./Plugin":20}],18:[function(_dereq_,module,exports){
+
+},{"../body/Composite":2,"./Common":14}],19:[function(_dereq_,module,exports){
 /**
 * The `Matter.Mouse` module contains methods for creating and manipulating mouse inputs.
 *
@@ -4944,7 +5396,7 @@ var Mouse = {};
 
 module.exports = Mouse;
 
-var Common = require('../core/Common');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -5129,21 +5581,366 @@ var Common = require('../core/Common');
         }
 
         return { 
-            x: x / (element.clientWidth / element.width * pixelRatio),
-            y: y / (element.clientHeight / element.height * pixelRatio)
+            x: x / (element.clientWidth / (element.width || element.clientWidth) * pixelRatio),
+            y: y / (element.clientHeight / (element.height || element.clientHeight) * pixelRatio)
         };
     };
 
 })();
 
-},{"../core/Common":14}],19:[function(require,module,exports){
+},{"../core/Common":14}],20:[function(_dereq_,module,exports){
+/**
+* The `Matter.Plugin` module contains functions for registering and installing plugins on modules.
+*
+* @class Plugin
+*/
+
+var Plugin = {};
+
+module.exports = Plugin;
+
+var Common = _dereq_('./Common');
+
+(function() {
+
+    Plugin._registry = {};
+
+    /**
+     * Registers a plugin object so it can be resolved later by name.
+     * @method register
+     * @param plugin {} The plugin to register.
+     * @return {object} The plugin.
+     */
+    Plugin.register = function(plugin) {
+        if (!Plugin.isPlugin(plugin)) {
+            Common.warn('Plugin.register:', Plugin.toString(plugin), 'does not implement all required fields.');
+        }
+
+        if (plugin.name in Plugin._registry) {
+            var registered = Plugin._registry[plugin.name],
+                pluginVersion = Plugin.versionParse(plugin.version).number,
+                registeredVersion = Plugin.versionParse(registered.version).number;
+
+            if (pluginVersion > registeredVersion) {
+                Common.warn('Plugin.register:', Plugin.toString(registered), 'was upgraded to', Plugin.toString(plugin));
+                Plugin._registry[plugin.name] = plugin;
+            } else if (pluginVersion < registeredVersion) {
+                Common.warn('Plugin.register:', Plugin.toString(registered), 'can not be downgraded to', Plugin.toString(plugin));
+            } else if (plugin !== registered) {
+                Common.warn('Plugin.register:', Plugin.toString(plugin), 'is already registered to different plugin object');
+            }
+        } else {
+            Plugin._registry[plugin.name] = plugin;
+        }
+
+        return plugin;
+    };
+
+    /**
+     * Resolves a dependency to a plugin object from the registry if it exists. 
+     * The `dependency` may contain a version, but only the name matters when resolving.
+     * @method resolve
+     * @param dependency {string} The dependency.
+     * @return {object} The plugin if resolved, otherwise `undefined`.
+     */
+    Plugin.resolve = function(dependency) {
+        return Plugin._registry[Plugin.dependencyParse(dependency).name];
+    };
+
+    /**
+     * Returns a pretty printed plugin name and version.
+     * @method toString
+     * @param plugin {} The plugin.
+     * @return {string} Pretty printed plugin name and version.
+     */
+    Plugin.toString = function(plugin) {
+        return typeof plugin === 'string' ? plugin : (plugin.name || 'anonymous') + '@' + (plugin.version || plugin.range || '0.0.0');
+    };
+
+    /**
+     * Returns `true` if the object meets the minimum standard to be considered a plugin.
+     * This means it must define the following properties:
+     * - `name`
+     * - `version`
+     * - `install`
+     * @method isPlugin
+     * @param obj {} The obj to test.
+     * @return {boolean} `true` if the object can be considered a plugin otherwise `false`.
+     */
+    Plugin.isPlugin = function(obj) {
+        return obj && obj.name && obj.version && obj.install;
+    };
+
+    /**
+     * Returns `true` if a plugin with the given `name` been installed on `module`.
+     * @method isUsed
+     * @param module {} The module.
+     * @param name {string} The plugin name.
+     * @return {boolean} `true` if a plugin with the given `name` been installed on `module`, otherwise `false`.
+     */
+    Plugin.isUsed = function(module, name) {
+        return module.used.indexOf(name) > -1;
+    };
+
+    /**
+     * Returns `true` if `plugin.for` is applicable to `module` by comparing against `module.name` and `module.version`.
+     * If `plugin.for` is not specified then it is assumed to be applicable.
+     * The value of `plugin.for` is a string of the format `'module-name'` or `'module-name@version'`.
+     * @method isFor
+     * @param plugin {} The plugin.
+     * @param module {} The module.
+     * @return {boolean} `true` if `plugin.for` is applicable to `module`, otherwise `false`.
+     */
+    Plugin.isFor = function(plugin, module) {
+        var parsed = plugin.for && Plugin.dependencyParse(plugin.for);
+        return !plugin.for || (module.name === parsed.name && Plugin.versionSatisfies(module.version, parsed.range));
+    };
+
+    /**
+     * Installs the plugins by calling `plugin.install` on each plugin specified in `plugins` if passed, otherwise `module.uses`.
+     * For installing plugins on `Matter` see the convenience function `Matter.use`.
+     * Plugins may be specified either by their name or a reference to the plugin object.
+     * Plugins themselves may specify further dependencies, but each plugin is installed only once.
+     * Order is important, a topological sort is performed to find the best resulting order of installation.
+     * This sorting attempts to satisfy every dependency's requested ordering, but may not be exact in all cases.
+     * This function logs the resulting status of each dependency in the console, along with any warnings.
+     * - A green tick ✅ indicates a dependency was resolved and installed.
+     * - An orange diamond 🔶 indicates a dependency was resolved but a warning was thrown for it or one if its dependencies.
+     * - A red cross ❌ indicates a dependency could not be resolved.
+     * Avoid calling this function multiple times on the same module unless you intend to manually control installation order.
+     * @method use
+     * @param module {} The module install plugins on.
+     * @param [plugins=module.uses] {} The plugins to install on module (optional, defaults to `module.uses`).
+     */
+    Plugin.use = function(module, plugins) {
+        module.uses = (module.uses || []).concat(plugins || []);
+
+        if (module.uses.length === 0) {
+            Common.warn('Plugin.use:', Plugin.toString(module), 'does not specify any dependencies to install.');
+            return;
+        }
+
+        var dependencies = Plugin.dependencies(module),
+            sortedDependencies = Common.topologicalSort(dependencies),
+            status = [];
+
+        for (var i = 0; i < sortedDependencies.length; i += 1) {
+            if (sortedDependencies[i] === module.name) {
+                continue;
+            }
+
+            var plugin = Plugin.resolve(sortedDependencies[i]);
+
+            if (!plugin) {
+                status.push('❌ ' + sortedDependencies[i]);
+                continue;
+            }
+
+            if (Plugin.isUsed(module, plugin.name)) {
+                continue;
+            }
+
+            if (!Plugin.isFor(plugin, module)) {
+                Common.warn('Plugin.use:', Plugin.toString(plugin), 'is for', plugin.for, 'but installed on', Plugin.toString(module) + '.');
+                plugin._warned = true;
+            }
+
+            if (plugin.install) {
+                plugin.install(module);
+            } else {
+                Common.warn('Plugin.use:', Plugin.toString(plugin), 'does not specify an install function.');
+                plugin._warned = true;
+            }
+
+            if (plugin._warned) {
+                status.push('🔶 ' + Plugin.toString(plugin));
+                delete plugin._warned;
+            } else {
+                status.push('✅ ' + Plugin.toString(plugin));
+            }
+
+            module.used.push(plugin.name);
+        }
+
+        if (status.length > 0) {
+            Common.info(status.join('  '));
+        }
+    };
+
+    /**
+     * Recursively finds all of a module's dependencies and returns a flat dependency graph.
+     * @method dependencies
+     * @param module {} The module.
+     * @return {object} A dependency graph.
+     */
+    Plugin.dependencies = function(module, tracked) {
+        var parsedBase = Plugin.dependencyParse(module),
+            name = parsedBase.name;
+
+        tracked = tracked || {};
+
+        if (name in tracked) {
+            return;
+        }
+
+        module = Plugin.resolve(module) || module;
+
+        tracked[name] = Common.map(module.uses || [], function(dependency) {
+            if (Plugin.isPlugin(dependency)) {
+                Plugin.register(dependency);
+            }
+
+            var parsed = Plugin.dependencyParse(dependency),
+                resolved = Plugin.resolve(dependency);
+
+            if (resolved && !Plugin.versionSatisfies(resolved.version, parsed.range)) {
+                Common.warn(
+                    'Plugin.dependencies:', Plugin.toString(resolved), 'does not satisfy',
+                    Plugin.toString(parsed), 'used by', Plugin.toString(parsedBase) + '.'
+                );
+
+                resolved._warned = true;
+                module._warned = true;
+            } else if (!resolved) {
+                Common.warn(
+                    'Plugin.dependencies:', Plugin.toString(dependency), 'used by',
+                    Plugin.toString(parsedBase), 'could not be resolved.'
+                );
+
+                module._warned = true;
+            }
+
+            return parsed.name;
+        });
+
+        for (var i = 0; i < tracked[name].length; i += 1) {
+            Plugin.dependencies(tracked[name][i], tracked);
+        }
+
+        return tracked;
+    };
+
+    /**
+     * Parses a dependency string into its components.
+     * The `dependency` is a string of the format `'module-name'` or `'module-name@version'`.
+     * See documentation for `Plugin.versionParse` for a description of the format.
+     * This function can also handle dependencies that are already resolved (e.g. a module object).
+     * @method dependencyParse
+     * @param dependency {string} The dependency of the format `'module-name'` or `'module-name@version'`.
+     * @return {object} The dependency parsed into its components.
+     */
+    Plugin.dependencyParse = function(dependency) {
+        if (Common.isString(dependency)) {
+            var pattern = /^[\w-]+(@(\*|[\^~]?\d+\.\d+\.\d+(-[0-9A-Za-z-]+)?))?$/;
+
+            if (!pattern.test(dependency)) {
+                Common.warn('Plugin.dependencyParse:', dependency, 'is not a valid dependency string.');
+            }
+
+            return {
+                name: dependency.split('@')[0],
+                range: dependency.split('@')[1] || '*'
+            };
+        }
+
+        return {
+            name: dependency.name,
+            range: dependency.range || dependency.version
+        };
+    };
+
+    /**
+     * Parses a version string into its components.  
+     * Versions are strictly of the format `x.y.z` (as in [semver](http://semver.org/)).
+     * Versions may optionally have a prerelease tag in the format `x.y.z-alpha`.
+     * Ranges are a strict subset of [npm ranges](https://docs.npmjs.com/misc/semver#advanced-range-syntax).
+     * Only the following range types are supported:
+     * - Tilde ranges e.g. `~1.2.3`
+     * - Caret ranges e.g. `^1.2.3`
+     * - Exact version e.g. `1.2.3`
+     * - Any version `*`
+     * @method versionParse
+     * @param range {string} The version string.
+     * @return {object} The version range parsed into its components.
+     */
+    Plugin.versionParse = function(range) {
+        var pattern = /^\*|[\^~]?\d+\.\d+\.\d+(-[0-9A-Za-z-]+)?$/;
+
+        if (!pattern.test(range)) {
+            Common.warn('Plugin.versionParse:', range, 'is not a valid version or range.');
+        }
+
+        var identifiers = range.split('-');
+        range = identifiers[0];
+
+        var isRange = isNaN(Number(range[0])),
+            version = isRange ? range.substr(1) : range,
+            parts = Common.map(version.split('.'), function(part) {
+                return Number(part);
+            });
+
+        return {
+            isRange: isRange,
+            version: version,
+            range: range,
+            operator: isRange ? range[0] : '',
+            parts: parts,
+            prerelease: identifiers[1],
+            number: parts[0] * 1e8 + parts[1] * 1e4 + parts[2]
+        };
+    };
+
+    /**
+     * Returns `true` if `version` satisfies the given `range`.
+     * See documentation for `Plugin.versionParse` for a description of the format.
+     * If a version or range is not specified, then any version (`*`) is assumed to satisfy.
+     * @method versionSatisfies
+     * @param version {string} The version string.
+     * @param range {string} The range string.
+     * @return {boolean} `true` if `version` satisfies `range`, otherwise `false`.
+     */
+    Plugin.versionSatisfies = function(version, range) {
+        range = range || '*';
+
+        var rangeParsed = Plugin.versionParse(range),
+            rangeParts = rangeParsed.parts,
+            versionParsed = Plugin.versionParse(version),
+            versionParts = versionParsed.parts;
+
+        if (rangeParsed.isRange) {
+            if (rangeParsed.operator === '*' || version === '*') {
+                return true;
+            }
+
+            if (rangeParsed.operator === '~') {
+                return versionParts[0] === rangeParts[0] && versionParts[1] === rangeParts[1] && versionParts[2] >= rangeParts[2];
+            }
+
+            if (rangeParsed.operator === '^') {
+                if (rangeParts[0] > 0) {
+                    return versionParts[0] === rangeParts[0] && versionParsed.number >= rangeParsed.number;
+                }
+
+                if (rangeParts[1] > 0) {
+                    return versionParts[1] === rangeParts[1] && versionParts[2] >= rangeParts[2];
+                }
+
+                return versionParts[2] === rangeParts[2];
+            }
+        }
+
+        return version === range || version === '*';
+    };
+
+})();
+
+},{"./Common":14}],21:[function(_dereq_,module,exports){
 /**
 * The `Matter.Runner` module is an optional utility which provides a game loop, 
-* that handles updating and rendering a `Matter.Engine` for you within a browser.
-* It is intended for demo and testing purposes, but may be adequate for simple games.
+* that handles continuously updating a `Matter.Engine` for you within a browser.
+* It is intended for development and debugging purposes, but may also be suitable for simple games.
 * If you are using your own game loop instead, then you do not need the `Matter.Runner` module.
 * Instead just call `Engine.update(engine, delta)` in your own loop.
-* Note that the method `Engine.run` is an alias for `Runner.run`.
 *
 * See the included usage [examples](https://github.com/liabru/matter-js/tree/master/examples).
 *
@@ -5154,9 +5951,9 @@ var Runner = {};
 
 module.exports = Runner;
 
-var Events = require('./Events');
-var Engine = require('./Engine');
-var Common = require('./Common');
+var Events = _dereq_('./Events');
+var Engine = _dereq_('./Engine');
+var Common = _dereq_('./Common');
 
 (function() {
 
@@ -5165,11 +5962,24 @@ var Common = require('./Common');
 
     if (typeof window !== 'undefined') {
         _requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
-                                      || window.mozRequestAnimationFrame || window.msRequestAnimationFrame 
-                                      || function(callback){ window.setTimeout(function() { callback(Common.now()); }, 1000 / 60); };
+                                      || window.mozRequestAnimationFrame || window.msRequestAnimationFrame;
    
         _cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame 
                                       || window.webkitCancelAnimationFrame || window.msCancelAnimationFrame;
+    }
+
+    if (!_requestAnimationFrame) {
+        var _frameTimeout;
+
+        _requestAnimationFrame = function(callback){ 
+            _frameTimeout = setTimeout(function() { 
+                callback(Common.now()); 
+            }, 1000 / 60);
+        };
+
+        _cancelAnimationFrame = function() {
+            clearTimeout(_frameTimeout);
+        };
     }
 
     /**
@@ -5298,7 +6108,7 @@ var Common = require('./Common');
             && engine.render
             && engine.render.controller
             && engine.render.controller.clear) {
-            engine.render.controller.clear(engine.render);
+            engine.render.controller.clear(engine.render); // @deprecated
         }
 
         // update
@@ -5307,11 +6117,12 @@ var Common = require('./Common');
         Events.trigger(runner, 'afterUpdate', event);
 
         // render
+        // @deprecated
         if (engine.render && engine.render.controller) {
             Events.trigger(runner, 'beforeRender', event);
             Events.trigger(engine, 'beforeRender', event); // @deprecated
 
-            engine.render.controller.world(engine);
+            engine.render.controller.world(engine.render);
 
             Events.trigger(runner, 'afterRender', event);
             Events.trigger(engine, 'afterRender', event); // @deprecated
@@ -5405,6 +6216,7 @@ var Common = require('./Common');
     * @param {number} event.timestamp The engine.timing.timestamp of the event
     * @param {} event.source The source object of the event
     * @param {} event.name The name of the event
+    * @deprecated
     */
 
     /**
@@ -5415,6 +6227,7 @@ var Common = require('./Common');
     * @param {number} event.timestamp The engine.timing.timestamp of the event
     * @param {} event.source The source object of the event
     * @param {} event.name The name of the event
+    * @deprecated
     */
 
     /*
@@ -5453,7 +6266,7 @@ var Common = require('./Common');
 
 })();
 
-},{"./Common":14,"./Engine":15,"./Events":16}],20:[function(require,module,exports){
+},{"./Common":14,"./Engine":15,"./Events":16}],22:[function(_dereq_,module,exports){
 /**
 * The `Matter.Sleeping` module contains methods to manage the sleeping state of bodies.
 *
@@ -5464,7 +6277,7 @@ var Sleeping = {};
 
 module.exports = Sleeping;
 
-var Events = require('./Events');
+var Events = _dereq_('./Events');
 
 (function() {
 
@@ -5584,7 +6397,8 @@ var Events = require('./Events');
 
 })();
 
-},{"./Events":16}],21:[function(require,module,exports){
+},{"./Events":16}],23:[function(_dereq_,module,exports){
+(function (global){
 /**
 * The `Matter.Bodies` module contains factory methods for creating rigid body models 
 * with commonly used body configurations (such as rectangles, circles and other polygons).
@@ -5600,11 +6414,12 @@ var Bodies = {};
 
 module.exports = Bodies;
 
-var Vertices = require('../geometry/Vertices');
-var Common = require('../core/Common');
-var Body = require('../body/Body');
-var Bounds = require('../geometry/Bounds');
-var Vector = require('../geometry/Vector');
+var Vertices = _dereq_('../geometry/Vertices');
+var Common = _dereq_('../core/Common');
+var Body = _dereq_('../body/Body');
+var Bounds = _dereq_('../geometry/Bounds');
+var Vector = _dereq_('../geometry/Vector');
+var decomp = (typeof window !== "undefined" ? window['decomp'] : typeof global !== "undefined" ? global['decomp'] : null);
 
 (function() {
 
@@ -5800,8 +6615,8 @@ var Vector = require('../geometry/Vector');
         removeCollinear = typeof removeCollinear !== 'undefined' ? removeCollinear : 0.01;
         minimumArea = typeof minimumArea !== 'undefined' ? minimumArea : 10;
 
-        if (!window.decomp) {
-            Common.log('Bodies.fromVertices: poly-decomp.js required. Could not decompose vertices. Fallback to convex hull.', 'warn');
+        if (!decomp) {
+            Common.warn('Bodies.fromVertices: poly-decomp.js required. Could not decompose vertices. Fallback to convex hull.');
         }
 
         // ensure vertexSets is an array of arrays
@@ -5813,7 +6628,7 @@ var Vector = require('../geometry/Vector');
             vertices = vertexSets[v];
             isConvex = Vertices.isConvex(vertices);
 
-            if (isConvex || !window.decomp) {
+            if (isConvex || !decomp) {
                 if (isConvex) {
                     vertices = Vertices.clockwiseSort(vertices);
                 } else {
@@ -5827,28 +6642,29 @@ var Vector = require('../geometry/Vector');
                 });
             } else {
                 // initialise a decomposition
-                var concave = new decomp.Polygon();
-                for (i = 0; i < vertices.length; i++) {
-                    concave.vertices.push([vertices[i].x, vertices[i].y]);
-                }
+                var concave = vertices.map(function(vertex) {
+                    return [vertex.x, vertex.y];
+                });
 
                 // vertices are concave and simple, we can decompose into parts
-                concave.makeCCW();
+                decomp.makeCCW(concave);
                 if (removeCollinear !== false)
-                    concave.removeCollinearPoints(removeCollinear);
+                    decomp.removeCollinearPoints(concave, removeCollinear);
 
                 // use the quick decomposition algorithm (Bayazit)
-                var decomposed = concave.quickDecomp();
+                var decomposed = decomp.quickDecomp(concave);
 
                 // for each decomposed chunk
                 for (i = 0; i < decomposed.length; i++) {
-                    var chunk = decomposed[i],
-                        chunkVertices = [];
+                    var chunk = decomposed[i];
 
                     // convert vertices into the correct structure
-                    for (j = 0; j < chunk.vertices.length; j++) {
-                        chunkVertices.push({ x: chunk.vertices[j][0], y: chunk.vertices[j][1] });
-                    }
+                    var chunkVertices = chunk.map(function(vertices) {
+                        return {
+                            x: vertices[0],
+                            y: vertices[1]
+                        };
+                    });
 
                     // skip small chunks
                     if (minimumArea > 0 && Vertices.area(chunkVertices) < minimumArea)
@@ -5914,7 +6730,9 @@ var Vector = require('../geometry/Vector');
     };
 
 })();
-},{"../body/Body":1,"../core/Common":14,"../geometry/Bounds":24,"../geometry/Vector":26,"../geometry/Vertices":27}],22:[function(require,module,exports){
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../body/Body":1,"../core/Common":14,"../geometry/Bounds":26,"../geometry/Vector":28,"../geometry/Vertices":29}],24:[function(_dereq_,module,exports){
 /**
 * The `Matter.Composites` module contains factory methods for creating composite bodies
 * with commonly used configurations (such as stacks and chains).
@@ -5928,11 +6746,11 @@ var Composites = {};
 
 module.exports = Composites;
 
-var Composite = require('../body/Composite');
-var Constraint = require('../constraint/Constraint');
-var Common = require('../core/Common');
-var Body = require('../body/Body');
-var Bodies = require('./Bodies');
+var Composite = _dereq_('../body/Composite');
+var Constraint = _dereq_('../constraint/Constraint');
+var Common = _dereq_('../core/Common');
+var Body = _dereq_('../body/Body');
+var Bodies = _dereq_('./Bodies');
 
 (function() {
 
@@ -6192,14 +7010,20 @@ var Bodies = require('./Bodies');
             bodyA: body,
             pointA: { x: wheelAOffset, y: wheelYOffset },
             bodyB: wheelA,
-            stiffness: 0.2
+            stiffness: 0.2,
+            render: {
+                lineWidth: 0
+            }
         });
                         
         var axelB = Constraint.create({
             bodyA: body,
             pointA: { x: wheelBOffset, y: wheelYOffset },
             bodyB: wheelB,
-            stiffness: 0.2
+            stiffness: 0.2,
+            render: {
+                lineWidth: 0
+            }
         });
         
         Composite.addBody(car, body);
@@ -6243,7 +7067,7 @@ var Bodies = require('./Bodies');
 
 })();
 
-},{"../body/Body":1,"../body/Composite":2,"../constraint/Constraint":12,"../core/Common":14,"./Bodies":21}],23:[function(require,module,exports){
+},{"../body/Body":1,"../body/Composite":2,"../constraint/Constraint":12,"../core/Common":14,"./Bodies":23}],25:[function(_dereq_,module,exports){
 /**
 * The `Matter.Axes` module contains methods for creating and manipulating sets of axes.
 *
@@ -6254,8 +7078,8 @@ var Axes = {};
 
 module.exports = Axes;
 
-var Vector = require('../geometry/Vector');
-var Common = require('../core/Common');
+var Vector = _dereq_('../geometry/Vector');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -6309,7 +7133,7 @@ var Common = require('../core/Common');
 
 })();
 
-},{"../core/Common":14,"../geometry/Vector":26}],24:[function(require,module,exports){
+},{"../core/Common":14,"../geometry/Vector":28}],26:[function(_dereq_,module,exports){
 /**
 * The `Matter.Bounds` module contains methods for creating and manipulating axis-aligned bounding boxes (AABB).
 *
@@ -6431,7 +7255,7 @@ module.exports = Bounds;
     
 })();
 
-},{}],25:[function(require,module,exports){
+},{}],27:[function(_dereq_,module,exports){
 /**
 * The `Matter.Svg` module contains methods for converting SVG images into an array of vector points.
 *
@@ -6446,7 +7270,7 @@ var Svg = {};
 
 module.exports = Svg;
 
-var Bounds = require('../geometry/Bounds');
+var Bounds = _dereq_('../geometry/Bounds');
 
 (function() {
 
@@ -6649,7 +7473,7 @@ var Bounds = require('../geometry/Bounds');
     };
 
 })();
-},{"../geometry/Bounds":24}],26:[function(require,module,exports){
+},{"../geometry/Bounds":26}],28:[function(_dereq_,module,exports){
 /**
 * The `Matter.Vector` module contains methods for creating and manipulating vectors.
 * Vectors are the basis of all the geometry related operations in the engine.
@@ -6880,12 +7704,14 @@ module.exports = Vector;
      * @type {vector[]}
      * @private
      */
-    Vector._temp = [Vector.create(), Vector.create(), 
-                    Vector.create(), Vector.create(), 
-                    Vector.create(), Vector.create()];
+    Vector._temp = [
+        Vector.create(), Vector.create(), 
+        Vector.create(), Vector.create(), 
+        Vector.create(), Vector.create()
+    ];
 
 })();
-},{}],27:[function(require,module,exports){
+},{}],29:[function(_dereq_,module,exports){
 /**
 * The `Matter.Vertices` module contains methods for creating and manipulating sets of vertices.
 * A set of vertices is an array of `Matter.Vector` with additional indexing properties inserted by `Vertices.create`.
@@ -6900,8 +7726,8 @@ var Vertices = {};
 
 module.exports = Vertices;
 
-var Vector = require('../geometry/Vector');
-var Common = require('../core/Common');
+var Vector = _dereq_('../geometry/Vector');
+var Common = _dereq_('../core/Common');
 
 (function() {
 
@@ -6913,6 +7739,8 @@ var Common = require('../core/Common');
      *
      * The `Vertices.create` method returns a new array of vertices, which are similar to Matter.Vector objects,
      * but with some additional references required for efficient collision detection routines.
+     *
+     * Vertices must be specified in clockwise order.
      *
      * Note that the `body` argument is not optional, a `Matter.Body` reference must be provided.
      *
@@ -7330,45 +8158,45 @@ var Common = require('../core/Common');
 
 })();
 
-},{"../core/Common":14,"../geometry/Vector":26}],28:[function(require,module,exports){
-var Matter = module.exports = {};
-Matter.version = 'master';
+},{"../core/Common":14,"../geometry/Vector":28}],30:[function(_dereq_,module,exports){
+var Matter = module.exports = _dereq_('../core/Matter');
 
-Matter.Body = require('../body/Body');
-Matter.Composite = require('../body/Composite');
-Matter.World = require('../body/World');
+Matter.Body = _dereq_('../body/Body');
+Matter.Composite = _dereq_('../body/Composite');
+Matter.World = _dereq_('../body/World');
 
-Matter.Contact = require('../collision/Contact');
-Matter.Detector = require('../collision/Detector');
-Matter.Grid = require('../collision/Grid');
-Matter.Pairs = require('../collision/Pairs');
-Matter.Pair = require('../collision/Pair');
-Matter.Query = require('../collision/Query');
-Matter.Resolver = require('../collision/Resolver');
-Matter.SAT = require('../collision/SAT');
+Matter.Contact = _dereq_('../collision/Contact');
+Matter.Detector = _dereq_('../collision/Detector');
+Matter.Grid = _dereq_('../collision/Grid');
+Matter.Pairs = _dereq_('../collision/Pairs');
+Matter.Pair = _dereq_('../collision/Pair');
+Matter.Query = _dereq_('../collision/Query');
+Matter.Resolver = _dereq_('../collision/Resolver');
+Matter.SAT = _dereq_('../collision/SAT');
 
-Matter.Constraint = require('../constraint/Constraint');
-Matter.MouseConstraint = require('../constraint/MouseConstraint');
+Matter.Constraint = _dereq_('../constraint/Constraint');
+Matter.MouseConstraint = _dereq_('../constraint/MouseConstraint');
 
-Matter.Common = require('../core/Common');
-Matter.Engine = require('../core/Engine');
-Matter.Events = require('../core/Events');
-Matter.Mouse = require('../core/Mouse');
-Matter.Runner = require('../core/Runner');
-Matter.Sleeping = require('../core/Sleeping');
+Matter.Common = _dereq_('../core/Common');
+Matter.Engine = _dereq_('../core/Engine');
+Matter.Events = _dereq_('../core/Events');
+Matter.Mouse = _dereq_('../core/Mouse');
+Matter.Runner = _dereq_('../core/Runner');
+Matter.Sleeping = _dereq_('../core/Sleeping');
+Matter.Plugin = _dereq_('../core/Plugin');
 
 
-Matter.Bodies = require('../factory/Bodies');
-Matter.Composites = require('../factory/Composites');
+Matter.Bodies = _dereq_('../factory/Bodies');
+Matter.Composites = _dereq_('../factory/Composites');
 
-Matter.Axes = require('../geometry/Axes');
-Matter.Bounds = require('../geometry/Bounds');
-Matter.Svg = require('../geometry/Svg');
-Matter.Vector = require('../geometry/Vector');
-Matter.Vertices = require('../geometry/Vertices');
+Matter.Axes = _dereq_('../geometry/Axes');
+Matter.Bounds = _dereq_('../geometry/Bounds');
+Matter.Svg = _dereq_('../geometry/Svg');
+Matter.Vector = _dereq_('../geometry/Vector');
+Matter.Vertices = _dereq_('../geometry/Vertices');
 
-Matter.Render = require('../render/Render');
-Matter.RenderPixi = require('../render/RenderPixi');
+Matter.Render = _dereq_('../render/Render');
+Matter.RenderPixi = _dereq_('../render/RenderPixi');
 
 // aliases
 
@@ -7380,15 +8208,11 @@ Matter.World.addConstraint = Matter.Composite.addConstraint;
 Matter.World.clear = Matter.Composite.clear;
 Matter.Engine.run = Matter.Runner.run;
 
-},{"../body/Body":1,"../body/Composite":2,"../body/World":3,"../collision/Contact":4,"../collision/Detector":5,"../collision/Grid":6,"../collision/Pair":7,"../collision/Pairs":8,"../collision/Query":9,"../collision/Resolver":10,"../collision/SAT":11,"../constraint/Constraint":12,"../constraint/MouseConstraint":13,"../core/Common":14,"../core/Engine":15,"../core/Events":16,"../core/Metrics":17,"../core/Mouse":18,"../core/Runner":19,"../core/Sleeping":20,"../factory/Bodies":21,"../factory/Composites":22,"../geometry/Axes":23,"../geometry/Bounds":24,"../geometry/Svg":25,"../geometry/Vector":26,"../geometry/Vertices":27,"../render/Render":29,"../render/RenderPixi":30}],29:[function(require,module,exports){
+},{"../body/Body":1,"../body/Composite":2,"../body/World":3,"../collision/Contact":4,"../collision/Detector":5,"../collision/Grid":6,"../collision/Pair":7,"../collision/Pairs":8,"../collision/Query":9,"../collision/Resolver":10,"../collision/SAT":11,"../constraint/Constraint":12,"../constraint/MouseConstraint":13,"../core/Common":14,"../core/Engine":15,"../core/Events":16,"../core/Matter":17,"../core/Metrics":18,"../core/Mouse":19,"../core/Plugin":20,"../core/Runner":21,"../core/Sleeping":22,"../factory/Bodies":23,"../factory/Composites":24,"../geometry/Axes":25,"../geometry/Bounds":26,"../geometry/Svg":27,"../geometry/Vector":28,"../geometry/Vertices":29,"../render/Render":31,"../render/RenderPixi":32}],31:[function(_dereq_,module,exports){
 /**
-* The `Matter.Render` module is the default `render.controller` used by a `Matter.Engine`.
-* This renderer is HTML5 canvas based and supports a number of drawing options including sprites and viewports.
-*
-* It is possible develop a custom renderer module based on `Matter.Render` and pass an instance of it to `Engine.create` via `options.render`.
-* A minimal custom renderer object must define at least three functions: `create`, `clear` and `world` (see `Matter.Render`).
-*
-* See also `Matter.RenderPixi` for an alternate WebGL, scene-graph based renderer.
+* The `Matter.Render` module is a simple HTML5 canvas based renderer for visualising instances of `Matter.Engine`.
+* It is intended for development and debugging purposes, but may also be suitable for simple games.
+* It includes a number of drawing options including wireframe, vector with support for sprites and viewports.
 *
 * @class Render
 */
@@ -7397,15 +8221,28 @@ var Render = {};
 
 module.exports = Render;
 
-var Common = require('../core/Common');
-var Composite = require('../body/Composite');
-var Bounds = require('../geometry/Bounds');
-var Events = require('../core/Events');
-var Grid = require('../collision/Grid');
-var Vector = require('../geometry/Vector');
+var Common = _dereq_('../core/Common');
+var Composite = _dereq_('../body/Composite');
+var Bounds = _dereq_('../geometry/Bounds');
+var Events = _dereq_('../core/Events');
+var Grid = _dereq_('../collision/Grid');
+var Vector = _dereq_('../geometry/Vector');
+var Mouse = _dereq_('../core/Mouse');
 
 (function() {
     
+    var _requestAnimationFrame,
+        _cancelAnimationFrame;
+
+    if (typeof window !== 'undefined') {
+        _requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
+                                      || window.mozRequestAnimationFrame || window.msRequestAnimationFrame 
+                                      || function(callback){ window.setTimeout(function() { callback(Common.now()); }, 1000 / 60); };
+   
+        _cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame 
+                                      || window.webkitCancelAnimationFrame || window.msCancelAnimationFrame;
+    }
+
     /**
      * Creates a new renderer. The options parameter is an object that specifies any properties you wish to override the defaults.
      * All properties have default values, and many are pre-calculated automatically based on other properties.
@@ -7417,16 +8254,18 @@ var Vector = require('../geometry/Vector');
     Render.create = function(options) {
         var defaults = {
             controller: Render,
+            engine: null,
             element: null,
             canvas: null,
             mouse: null,
+            frameRequestId: null,
             options: {
                 width: 800,
                 height: 600,
                 pixelRatio: 1,
-                background: '#fafafa',
-                wireframeBackground: '#222',
-                hasBounds: false,
+                background: '#18181d',
+                wireframeBackground: '#0f0f13',
+                hasBounds: !!options.bounds,
                 enabled: true,
                 wireframes: true,
                 showSleeping: true,
@@ -7455,6 +8294,8 @@ var Vector = require('../geometry/Vector');
             render.canvas.height = render.options.height || render.canvas.height;
         }
 
+        render.mouse = options.mouse;
+        render.engine = options.engine;
         render.canvas = render.canvas || _createCanvas(render.options.width, render.options.height);
         render.context = render.canvas.getContext('2d');
         render.textures = {};
@@ -7484,6 +8325,27 @@ var Vector = require('../geometry/Vector');
     };
 
     /**
+     * Continuously updates the render canvas on the `requestAnimationFrame` event.
+     * @method run
+     * @param {render} render
+     */
+    Render.run = function(render) {
+        (function loop(time){
+            render.frameRequestId = _requestAnimationFrame(loop);
+            Render.world(render);
+        })();
+    };
+
+    /**
+     * Ends execution of `Render.run` on the given `render`, by canceling the animation frame request event loop.
+     * @method stop
+     * @param {render} render
+     */
+    Render.stop = function(render) {
+        _cancelAnimationFrame(render.frameRequestId);
+    };
+
+    /**
      * Sets the pixel ratio of the renderer and updates the canvas.
      * To automatically detect the correct ratio, pass the string `'auto'` for `pixelRatio`.
      * @method setPixelRatio
@@ -7508,13 +8370,135 @@ var Vector = require('../geometry/Vector');
     };
 
     /**
+     * Positions and sizes the viewport around the given object bounds.
+     * Objects must have at least one of the following properties:
+     * - `object.bounds`
+     * - `object.position`
+     * - `object.min` and `object.max`
+     * - `object.x` and `object.y`
+     * @method lookAt
+     * @param {render} render
+     * @param {object[]} objects
+     * @param {vector} [padding]
+     * @param {bool} [center=true]
+     */
+    Render.lookAt = function(render, objects, padding, center) {
+        center = typeof center !== 'undefined' ? center : true;
+        objects = Common.isArray(objects) ? objects : [objects];
+        padding = padding || {
+            x: 0,
+            y: 0
+        };
+
+        // find bounds of all objects
+        var bounds = {
+            min: { x: Infinity, y: Infinity },
+            max: { x: -Infinity, y: -Infinity }
+        };
+
+        for (var i = 0; i < objects.length; i += 1) {
+            var object = objects[i],
+                min = object.bounds ? object.bounds.min : (object.min || object.position || object),
+                max = object.bounds ? object.bounds.max : (object.max || object.position || object); 
+
+            if (min && max) { 
+                if (min.x < bounds.min.x) 
+                    bounds.min.x = min.x;
+                    
+                if (max.x > bounds.max.x) 
+                    bounds.max.x = max.x;
+
+                if (min.y < bounds.min.y) 
+                    bounds.min.y = min.y;
+
+                if (max.y > bounds.max.y) 
+                    bounds.max.y = max.y;
+            }
+        }
+
+        // find ratios
+        var width = (bounds.max.x - bounds.min.x) + 2 * padding.x,
+            height = (bounds.max.y - bounds.min.y) + 2 * padding.y,
+            viewHeight = render.canvas.height,
+            viewWidth = render.canvas.width,
+            outerRatio = viewWidth / viewHeight,
+            innerRatio = width / height,
+            scaleX = 1,
+            scaleY = 1;
+
+        // find scale factor
+        if (innerRatio > outerRatio) {
+            scaleY = innerRatio / outerRatio;
+        } else {
+            scaleX = outerRatio / innerRatio;
+        }
+
+        // enable bounds
+        render.options.hasBounds = true;
+
+        // position and size
+        render.bounds.min.x = bounds.min.x;
+        render.bounds.max.x = bounds.min.x + width * scaleX;
+        render.bounds.min.y = bounds.min.y;
+        render.bounds.max.y = bounds.min.y + height * scaleY;
+
+        // center
+        if (center) {
+            render.bounds.min.x += width * 0.5 - (width * scaleX) * 0.5;
+            render.bounds.max.x += width * 0.5 - (width * scaleX) * 0.5;
+            render.bounds.min.y += height * 0.5 - (height * scaleY) * 0.5;
+            render.bounds.max.y += height * 0.5 - (height * scaleY) * 0.5;
+        }
+
+        // padding
+        render.bounds.min.x -= padding.x;
+        render.bounds.max.x -= padding.x;
+        render.bounds.min.y -= padding.y;
+        render.bounds.max.y -= padding.y;
+
+        // update mouse
+        if (render.mouse) {
+            Mouse.setScale(render.mouse, {
+                x: (render.bounds.max.x - render.bounds.min.x) / render.canvas.width,
+                y: (render.bounds.max.y - render.bounds.min.y) / render.canvas.height
+            });
+
+            Mouse.setOffset(render.mouse, render.bounds.min);
+        }
+    };
+
+    /**
+     * Applies viewport transforms based on `render.bounds` to a render context.
+     * @method startViewTransform
+     * @param {render} render
+     */
+    Render.startViewTransform = function(render) {
+        var boundsWidth = render.bounds.max.x - render.bounds.min.x,
+            boundsHeight = render.bounds.max.y - render.bounds.min.y,
+            boundsScaleX = boundsWidth / render.options.width,
+            boundsScaleY = boundsHeight / render.options.height;
+
+        render.context.scale(1 / boundsScaleX, 1 / boundsScaleY);
+        render.context.translate(-render.bounds.min.x, -render.bounds.min.y);
+    };
+
+    /**
+     * Resets all transforms on the render context.
+     * @method endViewTransform
+     * @param {render} render
+     */
+    Render.endViewTransform = function(render) {
+        render.context.setTransform(render.options.pixelRatio, 0, 0, render.options.pixelRatio, 0, 0);
+    };
+
+    /**
      * Renders the given `engine`'s `Matter.World` object.
      * This is the entry point for all rendering and should be called every time the scene changes.
      * @method world
-     * @param {engine} engine
+     * @param {render} render
      */
-    Render.world = function(engine) {
-        var render = engine.render,
+    Render.world = function(render) {
+        var engine = render.engine,
             world = engine.world,
             canvas = render.canvas,
             context = render.context,
@@ -7544,11 +8528,6 @@ var Vector = require('../geometry/Vector');
 
         // handle bounds
         if (options.hasBounds) {
-            var boundsWidth = render.bounds.max.x - render.bounds.min.x,
-                boundsHeight = render.bounds.max.y - render.bounds.min.y,
-                boundsScaleX = boundsWidth / options.width,
-                boundsScaleY = boundsHeight / options.height;
-
             // filter out bodies that are not in view
             for (i = 0; i < allBodies.length; i++) {
                 var body = allBodies[i];
@@ -7575,8 +8554,17 @@ var Vector = require('../geometry/Vector');
             }
 
             // transform the view
-            context.scale(1 / boundsScaleX, 1 / boundsScaleY);
-            context.translate(-render.bounds.min.x, -render.bounds.min.y);
+            Render.startViewTransform(render);
+
+            // update mouse
+            if (render.mouse) {
+                Mouse.setScale(render.mouse, {
+                    x: (render.bounds.max.x - render.bounds.min.x) / render.canvas.width,
+                    y: (render.bounds.max.y - render.bounds.min.y) / render.canvas.height
+                });
+
+                Mouse.setOffset(render.mouse, render.bounds.min);
+            }
         } else {
             constraints = allConstraints;
             bodies = allBodies;
@@ -7584,53 +8572,53 @@ var Vector = require('../geometry/Vector');
 
         if (!options.wireframes || (engine.enableSleeping && options.showSleeping)) {
             // fully featured rendering of bodies
-            Render.bodies(engine, bodies, context);
+            Render.bodies(render, bodies, context);
         } else {
             if (options.showConvexHulls)
-                Render.bodyConvexHulls(engine, bodies, context);
+                Render.bodyConvexHulls(render, bodies, context);
 
             // optimised method for wireframes only
-            Render.bodyWireframes(engine, bodies, context);
+            Render.bodyWireframes(render, bodies, context);
         }
 
         if (options.showBounds)
-            Render.bodyBounds(engine, bodies, context);
+            Render.bodyBounds(render, bodies, context);
 
         if (options.showAxes || options.showAngleIndicator)
-            Render.bodyAxes(engine, bodies, context);
+            Render.bodyAxes(render, bodies, context);
         
         if (options.showPositions)
-            Render.bodyPositions(engine, bodies, context);
+            Render.bodyPositions(render, bodies, context);
 
         if (options.showVelocity)
-            Render.bodyVelocity(engine, bodies, context);
+            Render.bodyVelocity(render, bodies, context);
 
         if (options.showIds)
-            Render.bodyIds(engine, bodies, context);
+            Render.bodyIds(render, bodies, context);
 
         if (options.showSeparations)
-            Render.separations(engine, engine.pairs.list, context);
+            Render.separations(render, engine.pairs.list, context);
 
         if (options.showCollisions)
-            Render.collisions(engine, engine.pairs.list, context);
+            Render.collisions(render, engine.pairs.list, context);
 
         if (options.showVertexNumbers)
-            Render.vertexNumbers(engine, bodies, context);
+            Render.vertexNumbers(render, bodies, context);
 
         if (options.showMousePosition)
-            Render.mousePosition(engine, render.mouse, context);
+            Render.mousePosition(render, render.mouse, context);
 
         Render.constraints(constraints, context);
 
         if (options.showBroadphase && engine.broadphase.controller === Grid)
-            Render.grid(engine, engine.broadphase, context);
+            Render.grid(render, engine.broadphase, context);
 
         if (options.showDebug)
-            Render.debug(engine, context);
+            Render.debug(render, context);
 
         if (options.hasBounds) {
             // revert view transforms
-            context.setTransform(options.pixelRatio, 0, 0, options.pixelRatio, 0, 0);
+            Render.endViewTransform(render);
         }
 
         Events.trigger(render, 'afterRender', event);
@@ -7640,13 +8628,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method debug
-     * @param {engine} engine
+     * @param {render} render
      * @param {RenderingContext} context
      */
-    Render.debug = function(engine, context) {
+    Render.debug = function(render, context) {
         var c = context,
+            engine = render.engine,
             world = engine.world,
-            render = engine.render,
             metrics = engine.metrics,
             options = render.options,
             bodies = Composite.allBodies(world),
@@ -7714,9 +8702,11 @@ var Vector = require('../geometry/Vector');
                 c.lineTo(constraint.pointB.x, constraint.pointB.y);
             }
 
-            c.lineWidth = constraint.render.lineWidth;
-            c.strokeStyle = constraint.render.strokeStyle;
-            c.stroke();
+            if (constraint.render.lineWidth) {
+                c.lineWidth = constraint.render.lineWidth;
+                c.strokeStyle = constraint.render.strokeStyle;
+                c.stroke();
+            }
         }
     };
     
@@ -7724,13 +8714,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method bodyShadows
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyShadows = function(engine, bodies, context) {
+    Render.bodyShadows = function(render, bodies, context) {
         var c = context,
-            render = engine.render;
+            engine = render.engine;
 
         for (var i = 0; i < bodies.length; i++) {
             var body = bodies[i];
@@ -7773,13 +8763,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method bodies
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodies = function(engine, bodies, context) {
+    Render.bodies = function(render, bodies, context) {
         var c = context,
-            render = engine.render,
+            engine = render.engine,
             options = render.options,
             showInternalEdges = options.showInternalEdges || !options.wireframes,
             body,
@@ -7852,15 +8842,19 @@ var Vector = require('../geometry/Vector');
 
                     if (!options.wireframes) {
                         c.fillStyle = part.render.fillStyle;
-                        c.lineWidth = part.render.lineWidth;
-                        c.strokeStyle = part.render.strokeStyle;
+
+                        if (part.render.lineWidth) {
+                            c.lineWidth = part.render.lineWidth;
+                            c.strokeStyle = part.render.strokeStyle;
+                            c.stroke();
+                        }
+
                         c.fill();
                     } else {
                         c.lineWidth = 1;
                         c.strokeStyle = '#bbb';
+                        c.stroke();
                     }
-
-                    c.stroke();
                 }
 
                 c.globalAlpha = 1;
@@ -7872,13 +8866,13 @@ var Vector = require('../geometry/Vector');
      * Optimised method for drawing body wireframes in one pass
      * @private
      * @method bodyWireframes
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyWireframes = function(engine, bodies, context) {
+    Render.bodyWireframes = function(render, bodies, context) {
         var c = context,
-            showInternalEdges = engine.render.options.showInternalEdges,
+            showInternalEdges = render.options.showInternalEdges,
             body,
             part,
             i,
@@ -7925,11 +8919,11 @@ var Vector = require('../geometry/Vector');
      * Optimised method for drawing body convex hull wireframes in one pass
      * @private
      * @method bodyConvexHulls
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyConvexHulls = function(engine, bodies, context) {
+    Render.bodyConvexHulls = function(render, bodies, context) {
         var c = context,
             body,
             part,
@@ -7964,11 +8958,11 @@ var Vector = require('../geometry/Vector');
      * Renders body vertex numbers.
      * @private
      * @method vertexNumbers
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.vertexNumbers = function(engine, bodies, context) {
+    Render.vertexNumbers = function(render, bodies, context) {
         var c = context,
             i,
             j,
@@ -7990,11 +8984,11 @@ var Vector = require('../geometry/Vector');
      * Renders mouse position.
      * @private
      * @method mousePosition
-     * @param {engine} engine
+     * @param {render} render
      * @param {mouse} mouse
      * @param {RenderingContext} context
      */
-    Render.mousePosition = function(engine, mouse, context) {
+    Render.mousePosition = function(render, mouse, context) {
         var c = context;
         c.fillStyle = 'rgba(255,255,255,0.8)';
         c.fillText(mouse.position.x + '  ' + mouse.position.y, mouse.position.x + 5, mouse.position.y - 5);
@@ -8004,13 +8998,13 @@ var Vector = require('../geometry/Vector');
      * Draws body bounds
      * @private
      * @method bodyBounds
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyBounds = function(engine, bodies, context) {
+    Render.bodyBounds = function(render, bodies, context) {
         var c = context,
-            render = engine.render,
+            engine = render.engine,
             options = render.options;
 
         c.beginPath();
@@ -8041,13 +9035,13 @@ var Vector = require('../geometry/Vector');
      * Draws body angle indicators and axes
      * @private
      * @method bodyAxes
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyAxes = function(engine, bodies, context) {
+    Render.bodyAxes = function(render, bodies, context) {
         var c = context,
-            render = engine.render,
+            engine = render.engine,
             options = render.options,
             part,
             i,
@@ -8088,12 +9082,13 @@ var Vector = require('../geometry/Vector');
 
         if (options.wireframes) {
             c.strokeStyle = 'indianred';
+            c.lineWidth = 1;
         } else {
-            c.strokeStyle = 'rgba(0,0,0,0.8)';
+            c.strokeStyle = 'rgba(255, 255, 255, 0.4)';
             c.globalCompositeOperation = 'overlay';
+            c.lineWidth = 2;
         }
 
-        c.lineWidth = 1;
         c.stroke();
         c.globalCompositeOperation = 'source-over';
     };
@@ -8102,13 +9097,13 @@ var Vector = require('../geometry/Vector');
      * Draws body positions
      * @private
      * @method bodyPositions
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyPositions = function(engine, bodies, context) {
+    Render.bodyPositions = function(render, bodies, context) {
         var c = context,
-            render = engine.render,
+            engine = render.engine,
             options = render.options,
             body,
             part,
@@ -8158,11 +9153,11 @@ var Vector = require('../geometry/Vector');
      * Draws body velocity
      * @private
      * @method bodyVelocity
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyVelocity = function(engine, bodies, context) {
+    Render.bodyVelocity = function(render, bodies, context) {
         var c = context;
 
         c.beginPath();
@@ -8186,11 +9181,11 @@ var Vector = require('../geometry/Vector');
      * Draws body ids
      * @private
      * @method bodyIds
-     * @param {engine} engine
+     * @param {render} render
      * @param {body[]} bodies
      * @param {RenderingContext} context
      */
-    Render.bodyIds = function(engine, bodies, context) {
+    Render.bodyIds = function(render, bodies, context) {
         var c = context,
             i,
             j;
@@ -8213,13 +9208,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method collisions
-     * @param {engine} engine
+     * @param {render} render
      * @param {pair[]} pairs
      * @param {RenderingContext} context
      */
-    Render.collisions = function(engine, pairs, context) {
+    Render.collisions = function(render, pairs, context) {
         var c = context,
-            options = engine.render.options,
+            options = render.options,
             pair,
             collision,
             corrected,
@@ -8296,13 +9291,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method separations
-     * @param {engine} engine
+     * @param {render} render
      * @param {pair[]} pairs
      * @param {RenderingContext} context
      */
-    Render.separations = function(engine, pairs, context) {
+    Render.separations = function(render, pairs, context) {
         var c = context,
-            options = engine.render.options,
+            options = render.options,
             pair,
             collision,
             corrected,
@@ -8353,13 +9348,13 @@ var Vector = require('../geometry/Vector');
      * Description
      * @private
      * @method grid
-     * @param {engine} engine
+     * @param {render} render
      * @param {grid} grid
      * @param {RenderingContext} context
      */
-    Render.grid = function(engine, grid, context) {
+    Render.grid = function(render, grid, context) {
         var c = context,
-            options = engine.render.options;
+            options = render.options;
 
         if (options.wireframes) {
             c.strokeStyle = 'rgba(255,180,0,0.1)';
@@ -8377,9 +9372,9 @@ var Vector = require('../geometry/Vector');
             if (grid.buckets[bucketId].length < 2)
                 continue;
 
-            var region = bucketId.split(',');
-            c.rect(0.5 + parseInt(region[0], 10) * grid.bucketWidth, 
-                    0.5 + parseInt(region[1], 10) * grid.bucketHeight, 
+            var region = bucketId.split(/C|R/);
+            c.rect(0.5 + parseInt(region[1], 10) * grid.bucketWidth, 
+                    0.5 + parseInt(region[2], 10) * grid.bucketHeight, 
                     grid.bucketWidth, 
                     grid.bucketHeight);
         }
@@ -8398,7 +9393,7 @@ var Vector = require('../geometry/Vector');
     Render.inspector = function(inspector, context) {
         var engine = inspector.engine,
             selected = inspector.selected,
-            render = engine.render,
+            render = inspector.render,
             options = render.options,
             bounds;
 
@@ -8585,6 +9580,13 @@ var Vector = require('../geometry/Vector');
      */
 
     /**
+     * A reference to the `Matter.Engine` instance to be used.
+     *
+     * @property engine
+     * @type engine
+     */
+
+    /**
      * A reference to the element where the canvas is to be inserted (if `render.canvas` has not been specified)
      *
      * @property element
@@ -8657,33 +9659,55 @@ var Vector = require('../geometry/Vector');
 
 })();
 
-},{"../body/Composite":2,"../collision/Grid":6,"../core/Common":14,"../core/Events":16,"../geometry/Bounds":24,"../geometry/Vector":26}],30:[function(require,module,exports){
+},{"../body/Composite":2,"../collision/Grid":6,"../core/Common":14,"../core/Events":16,"../core/Mouse":19,"../geometry/Bounds":26,"../geometry/Vector":28}],32:[function(_dereq_,module,exports){
 /**
 * The `Matter.RenderPixi` module is an example renderer using pixi.js.
 * See also `Matter.Render` for a canvas based renderer.
 *
 * @class RenderPixi
+* @deprecated the Matter.RenderPixi module will soon be removed from the Matter.js core.
+* It will likely be moved to its own repository (but maintenance will be limited).
 */
 
 var RenderPixi = {};
 
 module.exports = RenderPixi;
 
-var Composite = require('../body/Composite');
-var Common = require('../core/Common');
+var Bounds = _dereq_('../geometry/Bounds');
+var Composite = _dereq_('../body/Composite');
+var Common = _dereq_('../core/Common');
+var Events = _dereq_('../core/Events');
+var Vector = _dereq_('../geometry/Vector');
 
 (function() {
+
+    var _requestAnimationFrame,
+        _cancelAnimationFrame;
+
+    if (typeof window !== 'undefined') {
+        _requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
+                                      || window.mozRequestAnimationFrame || window.msRequestAnimationFrame 
+                                      || function(callback){ window.setTimeout(function() { callback(Common.now()); }, 1000 / 60); };
+   
+        _cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame 
+                                      || window.webkitCancelAnimationFrame || window.msCancelAnimationFrame;
+    }
     
     /**
      * Creates a new Pixi.js WebGL renderer
      * @method create
      * @param {object} options
      * @return {RenderPixi} A new renderer
+     * @deprecated
      */
     RenderPixi.create = function(options) {
+        Common.warn('RenderPixi.create: Matter.RenderPixi is deprecated (see docs)');
+
         var defaults = {
             controller: RenderPixi,
+            engine: null,
             element: null,
+            frameRequestId: null,
             canvas: null,
             renderer: null,
             container: null,
@@ -8722,6 +9746,8 @@ var Common = require('../core/Common');
             backgroundColor: options.background
         };
 
+        render.mouse = options.mouse;
+        render.engine = options.engine;
         render.renderer = render.renderer || new PIXI.WebGLRenderer(render.options.width, render.options.height, render.pixiOptions);
         render.container = render.container || new PIXI.Container();
         render.spriteContainer = render.spriteContainer || new PIXI.Container();
@@ -8737,6 +9763,11 @@ var Common = require('../core/Common');
             }
         };
 
+        // event listeners
+        Events.on(render.engine, 'beforeUpdate', function() {
+            RenderPixi.clear(render);
+        });
+
         // caches
         render.textures = {};
         render.sprites = {};
@@ -8749,7 +9780,7 @@ var Common = require('../core/Common');
         if (Common.isElement(render.element)) {
             render.element.appendChild(render.canvas);
         } else {
-            Common.log('No "render.element" passed, "render.canvas" was not inserted into document.', 'warn');
+            Common.warn('No "render.element" passed, "render.canvas" was not inserted into document.');
         }
 
         // prevent menus on canvas
@@ -8760,9 +9791,33 @@ var Common = require('../core/Common');
     };
 
     /**
+     * Continuously updates the render canvas on the `requestAnimationFrame` event.
+     * @method run
+     * @param {render} render
+     * @deprecated
+     */
+    RenderPixi.run = function(render) {
+        (function loop(time){
+            render.frameRequestId = _requestAnimationFrame(loop);
+            RenderPixi.world(render);
+        })();
+    };
+
+    /**
+     * Ends execution of `Render.run` on the given `render`, by canceling the animation frame request event loop.
+     * @method stop
+     * @param {render} render
+     * @deprecated
+     */
+    RenderPixi.stop = function(render) {
+        _cancelAnimationFrame(render.frameRequestId);
+    };
+
+    /**
      * Clears the scene graph
      * @method clear
      * @param {RenderPixi} render
+     * @deprecated
      */
     RenderPixi.clear = function(render) {
         var container = render.container,
@@ -8806,6 +9861,7 @@ var Common = require('../core/Common');
      * @method setBackground
      * @param {RenderPixi} render
      * @param {string} background
+     * @deprecated
      */
     RenderPixi.setBackground = function(render, background) {
         if (render.currentBackground !== background) {
@@ -8840,9 +9896,10 @@ var Common = require('../core/Common');
      * Description
      * @method world
      * @param {engine} engine
+     * @deprecated
      */
-    RenderPixi.world = function(engine) {
-        var render = engine.render,
+    RenderPixi.world = function(render) {
+        var engine = render.engine,
             world = engine.world,
             renderer = render.renderer,
             container = render.container,
@@ -8897,10 +9954,10 @@ var Common = require('../core/Common');
         }
 
         for (i = 0; i < bodies.length; i++)
-            RenderPixi.body(engine, bodies[i]);
+            RenderPixi.body(render, bodies[i]);
 
         for (i = 0; i < constraints.length; i++)
-            RenderPixi.constraint(engine, constraints[i]);
+            RenderPixi.constraint(render, constraints[i]);
 
         renderer.render(container);
     };
@@ -8911,9 +9968,10 @@ var Common = require('../core/Common');
      * @method constraint
      * @param {engine} engine
      * @param {constraint} constraint
+     * @deprecated
      */
-    RenderPixi.constraint = function(engine, constraint) {
-        var render = engine.render,
+    RenderPixi.constraint = function(render, constraint) {
+        var engine = render.engine,
             bodyA = constraint.bodyA,
             bodyB = constraint.bodyB,
             pointA = constraint.pointA,
@@ -8962,9 +10020,10 @@ var Common = require('../core/Common');
      * @method body
      * @param {engine} engine
      * @param {body} body
+     * @deprecated
      */
-    RenderPixi.body = function(engine, body) {
-        var render = engine.render,
+    RenderPixi.body = function(render, body) {
+        var engine = render.engine,
             bodyRender = body.render;
 
         if (!bodyRender.visible)
@@ -9018,6 +10077,7 @@ var Common = require('../core/Common');
      * @param {RenderPixi} render
      * @param {body} body
      * @return {PIXI.Sprite} sprite
+     * @deprecated
      */
     var _createBodySprite = function(render, body) {
         var bodyRender = body.render,
@@ -9038,6 +10098,7 @@ var Common = require('../core/Common');
      * @param {RenderPixi} render
      * @param {body} body
      * @return {PIXI.Graphics} graphics
+     * @deprecated
      */
     var _createBodyPrimitive = function(render, body) {
         var bodyRender = body.render,
@@ -9102,6 +10163,7 @@ var Common = require('../core/Common');
      * @param {RenderPixi} render
      * @param {string} imagePath
      * @return {PIXI.Texture} texture
+     * @deprecated
      */
     var _getTexture = function(render, imagePath) {
         var texture = render.textures[imagePath];
@@ -9114,5 +10176,5 @@ var Common = require('../core/Common');
 
 })();
 
-},{"../body/Composite":2,"../core/Common":14}]},{},[28])(28)
+},{"../body/Composite":2,"../core/Common":14,"../core/Events":16,"../geometry/Bounds":26,"../geometry/Vector":28}]},{},[30])(30)
 });

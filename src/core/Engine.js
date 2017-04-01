@@ -32,15 +32,18 @@ var Body = require('../body/Body');
      * All properties have default values, and many are pre-calculated automatically based on other properties.
      * See the properties section below for detailed information on what you can pass via the `options` object.
      * @method create
-     * @param {HTMLElement} element
      * @param {object} [options]
      * @return {engine} engine
      */
     Engine.create = function(element, options) {
-
         // options may be passed as the first (and only) argument
         options = Common.isElement(element) ? options : element;
         element = Common.isElement(element) ? element : null;
+        options = options || {};
+
+        if (element || options.render) {
+            Common.warn('Engine.create: engine.render is deprecated (see docs)');
+        }
 
         var defaults = {
             positionIterations: 6,
@@ -48,6 +51,7 @@ var Body = require('../body/Body');
             constraintIterations: 2,
             enableSleeping: false,
             events: [],
+            plugin: {},
             timing: {
                 timestamp: 0,
                 timeScale: 1
@@ -59,6 +63,7 @@ var Body = require('../body/Body');
 
         var engine = Common.extend(defaults, options);
 
+        // @deprecated
         if (element || engine.render) {
             var renderDefaults = {
                 element: element,
@@ -68,11 +73,17 @@ var Body = require('../body/Body');
             engine.render = Common.extend(renderDefaults, engine.render);
         }
 
+        // @deprecated
         if (engine.render && engine.render.controller) {
             engine.render = engine.render.controller.create(engine.render);
         }
 
-        engine.world = World.create(engine.world);
+        // @deprecated
+        if (engine.render) {
+            engine.render.engine = engine;
+        }
+
+        engine.world = options.world || World.create(engine.world);
         engine.pairs = Pairs.create();
         engine.broadphase = engine.broadphase.controller.create(engine.broadphase);
         engine.metrics = engine.metrics || { extended: false };
@@ -160,6 +171,11 @@ var Body = require('../body/Body');
             broadphasePairs = allBodies;
         }
 
+        // clear all composite modified flags
+        if (world.isModified) {
+            Composite.setModified(world, false, false, true);
+        }
+
         // narrowphase pass: find actual collisions, then create or update collision pairs
         var collisions = broadphase.detector(broadphasePairs, engine);
 
@@ -204,10 +220,6 @@ var Body = require('../body/Body');
 
         // clear force buffers
         _bodiesClearForces(allBodies);
-
-        // clear all composite modified flags
-        if (world.isModified)
-            Composite.setModified(world, false, false, true);
 
         Events.trigger(engine, 'afterUpdate', event);
 
@@ -460,6 +472,7 @@ var Body = require('../body/Body');
      *
      * @property render
      * @type render
+     * @deprecated see Demo.js for an example of creating a renderer
      * @default a Matter.Render instance
      */
 
@@ -477,6 +490,13 @@ var Body = require('../body/Body');
      * @property world
      * @type world
      * @default a Matter.World instance
+     */
+
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
      */
 
 })();

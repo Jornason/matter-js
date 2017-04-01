@@ -1,3 +1,145 @@
+<a name="0.12.0"></a>
+# 0.12.0 (2017-02-02)
+
+* add poly-decamp require shim ([c72a9d0](https://github.com/liabru/matter-js/commit/c72a9d0))
+* added body.plugin, composite.plugin, constraint.plugin, engine.plugin properties ([b353393](https://github.com/liabru/matter-js/commit/b353393))
+* added Render.lookAt ([47443b3](https://github.com/liabru/matter-js/commit/47443b3))
+* added Render.startViewTransform and Render.endViewTransform ([c8e5d5c](https://github.com/liabru/matter-js/commit/c8e5d5c))
+* change Matter.MouseConstraint to use engine beforeUpdate event, closes #73 ([ffb128c](https://github.com/liabru/matter-js/commit/ffb128c)), closes [#73](https://github.com/liabru/matter-js/issues/73)
+* changed default render styles ([719ad64](https://github.com/liabru/matter-js/commit/719ad64))
+* changed plugins to use body.plugin ([3fdf343](https://github.com/liabru/matter-js/commit/3fdf343))
+* fix Body.setStatic(body, false), closes #187 ([a815ce4](https://github.com/liabru/matter-js/commit/a815ce4)), closes [#187](https://github.com/liabru/matter-js/issues/187)
+* fix build temporarily ([805ff2a](https://github.com/liabru/matter-js/commit/805ff2a))
+* fix lint ([0ce686d](https://github.com/liabru/matter-js/commit/0ce686d))
+* fix lint ([714b8ae](https://github.com/liabru/matter-js/commit/714b8ae))
+* fix Render.grid ([dd83386](https://github.com/liabru/matter-js/commit/dd83386))
+* fix test npm script ([6285df9](https://github.com/liabru/matter-js/commit/6285df9))
+* fix v8 optimisation issues ([86c4a61](https://github.com/liabru/matter-js/commit/86c4a61))
+* Fixes #220 ([74de894](https://github.com/liabru/matter-js/commit/74de894)), closes [#220](https://github.com/liabru/matter-js/issues/220)
+* improved demo and examples ([1a40f27](https://github.com/liabru/matter-js/commit/1a40f27))
+* improved demo and examples ([ace1a9f](https://github.com/liabru/matter-js/commit/ace1a9f))
+* improved demo and examples ([8cdbb38](https://github.com/liabru/matter-js/commit/8cdbb38))
+* Update to latest poly-decomp.js API ([3d8f88e](https://github.com/liabru/matter-js/commit/3d8f88e))
+* updated alpha build ([6c19f0b](https://github.com/liabru/matter-js/commit/6c19f0b))
+* updated dependencies ([8c140bd](https://github.com/liabru/matter-js/commit/8c140bd))
+* updated matter-tools ([def8d22](https://github.com/liabru/matter-js/commit/def8d22))
+
+
+
+<a name="0.11.1"></a>
+## 0.11.1 (2016-11-09)
+
+
+* added derequire to build ([ded796c](https://github.com/liabru/matter-js/commit/ded796c))
+
+
+
+<a name="0.11.0"></a>
+# 0.11.0 (2016-11-04)
+
+
+* add logo to readme ([d54dec3](https://github.com/liabru/matter-js/commit/d54dec3))
+* added docs for Matter.Plugin with tweaks ([3883981](https://github.com/liabru/matter-js/commit/3883981))
+* added Example.attractors ([758bbe8](https://github.com/liabru/matter-js/commit/758bbe8))
+* added Matter.before, Matter.after, Common.chainPathBefore, Common.chainPathAfter, Common.get, Common ([50ad7ca](https://github.com/liabru/matter-js/commit/50ad7ca))
+* added Matter.Plugin initial implementation ([e84c537](https://github.com/liabru/matter-js/commit/e84c537))
+* added note in docs about vertices order ([ad033f5](https://github.com/liabru/matter-js/commit/ad033f5))
+* added plugin status logging ([51b7b1d](https://github.com/liabru/matter-js/commit/51b7b1d))
+* added plugins matter-attractors, matter-gravity, matter-world-wrap, removed test plugins ([59bfa0b](https://github.com/liabru/matter-js/commit/59bfa0b))
+* change plugins to use best practices ([37d4258](https://github.com/liabru/matter-js/commit/37d4258))
+* change travis node version to latest stable ([ee33686](https://github.com/liabru/matter-js/commit/ee33686))
+* changed naming approach for prerelease versions ([83ae546](https://github.com/liabru/matter-js/commit/83ae546))
+* fix build flags ([29d182c](https://github.com/liabru/matter-js/commit/29d182c))
+* fix build task for travis ([6aa3661](https://github.com/liabru/matter-js/commit/6aa3661))
+* fix gravity reset in demo ([c00df81](https://github.com/liabru/matter-js/commit/c00df81))
+* fix gulp build version replacement ([faf6bec](https://github.com/liabru/matter-js/commit/faf6bec))
+* fix Matter.Mouse when element does not have fixed dimensions, closes #73 ([1340159](https://github.com/liabru/matter-js/commit/1340159)), closes [#73](https://github.com/liabru/matter-js/issues/73)
+* fix release tasks ([549983d](https://github.com/liabru/matter-js/commit/549983d))
+* fix requestAnimationFrame polyfill for Matter.Runner, closes #252 ([7c8f6ce](https://github.com/liabru/matter-js/commit/7c8f6ce)), closes [#252](https://github.com/liabru/matter-js/issues/252)
+* fix tests ([54e7d9c](https://github.com/liabru/matter-js/commit/54e7d9c))
+* fixed Body.create with no options ([0e5a457](https://github.com/liabru/matter-js/commit/0e5a457))
+* fixed issue with Matter.RenderPixi not being cleared when bodies removed, closes #218 ([4972af8](https://github.com/liabru/matter-js/commit/4972af8)), closes [#218](https://github.com/liabru/matter-js/issues/218)
+* fixed various Matter.Plugin issues ([05d0961](https://github.com/liabru/matter-js/commit/05d0961))
+* improve docs ([9856e3c](https://github.com/liabru/matter-js/commit/9856e3c))
+* improved logging ([d4d64ed](https://github.com/liabru/matter-js/commit/d4d64ed))
+* Limit packaging extraneous files ([3accec6](https://github.com/liabru/matter-js/commit/3accec6))
+* Merge branch 'jackismissing-master' ([3452465](https://github.com/liabru/matter-js/commit/3452465))
+* Merge branch 'master' of https://github.com/jackismissing/matter-js into jackismissing-master ([ba19130](https://github.com/liabru/matter-js/commit/ba19130))
+* Merge branch 'plugins' ([60d0839](https://github.com/liabru/matter-js/commit/60d0839))
+* Merge pull request #1 from jackismissing/jackismissing-patch-1 ([46a2bf6](https://github.com/liabru/matter-js/commit/46a2bf6))
+* Merge pull request #244 from MarkHerhold/master ([3449ca5](https://github.com/liabru/matter-js/commit/3449ca5))
+* refactor plugin system ([8da170f](https://github.com/liabru/matter-js/commit/8da170f))
+* refactored plugins ([b4a3453](https://github.com/liabru/matter-js/commit/b4a3453))
+* remove and ignore all test refs ([7a7187a](https://github.com/liabru/matter-js/commit/7a7187a))
+* RenderPixi.js - added missing dependencies ([aec19ae](https://github.com/liabru/matter-js/commit/aec19ae))
+* update Matter.Plugin docs ([6f8b705](https://github.com/liabru/matter-js/commit/6f8b705))
+* updated edge build ([1d05499](https://github.com/liabru/matter-js/commit/1d05499))
+* updated edge build ([0bdaece](https://github.com/liabru/matter-js/commit/0bdaece))
+* updated readme ([a408854](https://github.com/liabru/matter-js/commit/a408854))
+* updated readme ([4da2e25](https://github.com/liabru/matter-js/commit/4da2e25))
+* updated readme ([9ccc028](https://github.com/liabru/matter-js/commit/9ccc028))
+* updated readme ([faf534a](https://github.com/liabru/matter-js/commit/faf534a))
+* updated readme ([5ca9aca](https://github.com/liabru/matter-js/commit/5ca9aca))
+* updated readme ([e3e9080](https://github.com/liabru/matter-js/commit/e3e9080))
+* updated readme ([c4cce9e](https://github.com/liabru/matter-js/commit/c4cce9e))
+* updated readme ([4b5837e](https://github.com/liabru/matter-js/commit/4b5837e))
+* updated readme ([098f224](https://github.com/liabru/matter-js/commit/098f224))
+
+
+
+<a name="0.10.0"></a>
+# 0.10.0 (2016-05-01)
+
+
+* added release:push:docs task ([04cbd1d](https://github.com/liabru/matter-js/commit/04cbd1d))
+* decouple Matter.Render from Matter.Engine ([de823eb](https://github.com/liabru/matter-js/commit/de823eb))
+* decouple Matter.RenderPixi ([72f90b9](https://github.com/liabru/matter-js/commit/72f90b9))
+* deprecated Matter.RenderPixi ([e8c899a](https://github.com/liabru/matter-js/commit/e8c899a))
+* deprecated Matter.RenderPixi ([a6b97cd](https://github.com/liabru/matter-js/commit/a6b97cd))
+* fix tests ([f59e220](https://github.com/liabru/matter-js/commit/f59e220))
+* fix tests ([c26684e](https://github.com/liabru/matter-js/commit/c26684e))
+* Merge branch 'decouple-renderer' ([31067c9](https://github.com/liabru/matter-js/commit/31067c9))
+
+
+
+<a name="0.9.3"></a>
+## 0.9.3 (2016-04-19)
+
+
+* added readonly to docs for type property, closes #235 ([afd7531](https://github.com/liabru/matter-js/commit/afd7531)), closes [#235](https://github.com/liabru/matter-js/issues/235)
+* Engine uses provided world; fixes issue #230 ([158c404](https://github.com/liabru/matter-js/commit/158c404)), closes [#230](https://github.com/liabru/matter-js/issues/230)
+* fix issue with removed bodies causing collisions ([23a773a](https://github.com/liabru/matter-js/commit/23a773a))
+* fix Matter.Engine.create docs to show element param is optional ([e2e7c0b](https://github.com/liabru/matter-js/commit/e2e7c0b))
+* handle missing options in Engine.create ([f36fe2c](https://github.com/liabru/matter-js/commit/f36fe2c))
+* improved release tasks ([e13d2d2](https://github.com/liabru/matter-js/commit/e13d2d2))
+* Merge branch 'master' of github.com:liabru/matter-js ([d373172](https://github.com/liabru/matter-js/commit/d373172))
+* Merge pull request #237 from iamjoshua/master ([b724959](https://github.com/liabru/matter-js/commit/b724959)), closes [#230](https://github.com/liabru/matter-js/issues/230)
+* set release task to default to patch ([9d396fe](https://github.com/liabru/matter-js/commit/9d396fe))
+* updated edge build ([7eb9ac7](https://github.com/liabru/matter-js/commit/7eb9ac7))
+
+
+
+<a name="0.9.2"></a>
+## 0.9.2 (2016-04-07)
+
+
+* Add permeability example and doc entry ([6e7add1](https://github.com/liabru/matter-js/commit/6e7add1))
+* Add permeable objects ([1573359](https://github.com/liabru/matter-js/commit/1573359))
+* Change permeable name to sensors, add isSensor to Pair ([28084b0](https://github.com/liabru/matter-js/commit/28084b0))
+* Document World bounds and Grid bucket size. ([5054c97](https://github.com/liabru/matter-js/commit/5054c97))
+* fix Body.scale for circles, closes #234 ([f428d6b](https://github.com/liabru/matter-js/commit/f428d6b)), closes [#234](https://github.com/liabru/matter-js/issues/234)
+* Fix the out-of-bounds check in grid broadphase ([a20a9fb](https://github.com/liabru/matter-js/commit/a20a9fb))
+* Merge pull request #224 from brollb/223-bounds-ignored-in-renderer ([1944f6a](https://github.com/liabru/matter-js/commit/1944f6a)), closes [#223](https://github.com/liabru/matter-js/issues/223)
+* Merge pull request #231 from Rantanen/patch-1 ([b6f6a03](https://github.com/liabru/matter-js/commit/b6f6a03))
+* Merge pull request #232 from Rantanen/docs ([79fa57e](https://github.com/liabru/matter-js/commit/79fa57e))
+* Merged sensors from Misiur-master ([e1a52d5](https://github.com/liabru/matter-js/commit/e1a52d5))
+* Update README.md ([a5b535d](https://github.com/liabru/matter-js/commit/a5b535d))
+* Update README.md ([a31ab39](https://github.com/liabru/matter-js/commit/a31ab39))
+* Updated `hasBounds` default value. Fixes #223 ([053ea76](https://github.com/liabru/matter-js/commit/053ea76)), closes [#223](https://github.com/liabru/matter-js/issues/223)
+* updated test refs ([93ba111](https://github.com/liabru/matter-js/commit/93ba111))
+
+
+
 <a name="0.9.1"></a>
 ## 0.9.1 (2016-02-15)
 

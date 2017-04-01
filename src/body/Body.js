@@ -30,6 +30,7 @@ var Axes = require('../geometry/Axes');
     /**
      * Creates a new rigid body model. The options parameter is an object that specifies any properties you wish to override the defaults.
      * All properties have default values, and many are pre-calculated automatically based on other properties.
+     * Vertices must be specified in clockwise order.
      * See the properties section below for detailed information on what you can pass via the `options` object.
      * @method create
      * @param {} options
@@ -41,6 +42,7 @@ var Axes = require('../geometry/Axes');
             type: 'body',
             label: 'Body',
             parts: [],
+            plugin: {},
             angle: 0,
             vertices: Vertices.fromPath('L 0 0 L 40 0 L 40 40 L 0 40'),
             position: { x: 0, y: 0 },
@@ -53,6 +55,7 @@ var Axes = require('../geometry/Axes');
             angularSpeed: 0,
             velocity: { x: 0, y: 0 },
             angularVelocity: 0,
+            isSensor: false,
             isStatic: false,
             isSleeping: false,
             motion: 0,
@@ -78,7 +81,7 @@ var Axes = require('../geometry/Axes');
                     xOffset: 0,
                     yOffset: 0
                 },
-                lineWidth: 1.5
+                lineWidth: 0
             }
         };
 
@@ -120,9 +123,11 @@ var Axes = require('../geometry/Axes');
      * @method _initProperties
      * @private
      * @param {body} body
-     * @param {} options
+     * @param {} [options]
      */
     var _initProperties = function(body, options) {
+        options = options || {};
+
         // init required properties (order is important)
         Body.set(body, {
             bounds: body.bounds || Bounds.create(body.vertices),
@@ -148,7 +153,7 @@ var Axes = require('../geometry/Axes');
         });
 
         // render properties
-        var defaultFillStyle = (body.isStatic ? '#eeeeee' : Common.choose(['#556270', '#4ECDC4', '#C7F464', '#FF6B6B', '#C44D58'])),
+        var defaultFillStyle = (body.isStatic ? '#2e2b44' : Common.choose(['#006BA6', '#0496FF', '#FFBC42', '#D81159', '#8F2D56'])),
             defaultStrokeStyle = Common.shadeColor(defaultFillStyle, -20);
         body.render.fillStyle = body.render.fillStyle || defaultFillStyle;
         body.render.strokeStyle = body.render.strokeStyle || defaultStrokeStyle;
@@ -233,6 +238,16 @@ var Axes = require('../geometry/Axes');
             part.isStatic = isStatic;
 
             if (isStatic) {
+                part._original = {
+                    restitution: part.restitution,
+                    friction: part.friction,
+                    mass: part.mass,
+                    inertia: part.inertia,
+                    density: part.density,
+                    inverseMass: part.inverseMass,
+                    inverseInertia: part.inverseInertia
+                };
+
                 part.restitution = 0;
                 part.friction = 1;
                 part.mass = part.inertia = part.density = Infinity;
@@ -245,6 +260,16 @@ var Axes = require('../geometry/Axes');
                 part.speed = 0;
                 part.angularSpeed = 0;
                 part.motion = 0;
+            } else if (part._original) {
+                part.restitution = part._original.restitution;
+                part.friction = part._original.friction;
+                part.mass = part._original.mass;
+                part.inertia = part._original.inertia;
+                part.density = part._original.density;
+                part.inverseMass = part._original.inverseMass;
+                part.inverseInertia = part._original.inverseInertia;
+
+                delete part._original;
             }
         }
     };
@@ -504,6 +529,16 @@ var Axes = require('../geometry/Axes');
             Bounds.update(part.bounds, part.vertices, body.velocity);
         }
 
+        // handle circles
+        if (body.circleRadius) { 
+            if (scaleX === scaleY) {
+                body.circleRadius *= scaleX;
+            } else {
+                // body is no longer a circle
+                body.circleRadius = null;
+            }
+        }
+
         if (!body.isStatic) {
             var total = _totalProperties(body);
             body.area = total.area;
@@ -662,6 +697,7 @@ var Axes = require('../geometry/Axes');
      * @property type
      * @type string
      * @default "body"
+     * @readOnly
      */
 
     /**
@@ -682,6 +718,13 @@ var Axes = require('../geometry/Axes');
      *
      * @property parts
      * @type body[]
+     */
+
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
      */
 
     /**
@@ -784,6 +827,14 @@ var Axes = require('../geometry/Axes');
      * If you need to set a body as static after its creation, you should use `Body.setStatic` as this requires more than just setting this flag.
      *
      * @property isStatic
+     * @type boolean
+     * @default false
+     */
+
+    /**
+     * A flag that indicates whether a body is a sensor. Sensor triggers collision events, but doesn't react with colliding body physically.
+     *
+     * @property isSensor
      * @type boolean
      * @default false
      */

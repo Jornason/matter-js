@@ -35,7 +35,8 @@ var Body = require('./Body');
             bodies: [], 
             constraints: [], 
             composites: [],
-            label: 'Composite'
+            label: 'Composite',
+            plugin: {}
         }, options);
     };
 
@@ -85,7 +86,7 @@ var Body = require('./Body');
             case 'body':
                 // skip adding compound parts
                 if (obj.parent !== obj) {
-                    Common.log('Composite.add: skipped adding a compound body part (you must add its parent instead)', 'warn');
+                    Common.warn('Composite.add: skipped adding a compound body part (you must add its parent instead)');
                     break;
                 }
 
@@ -596,6 +597,7 @@ var Body = require('./Body');
      * @property type
      * @type string
      * @default "composite"
+     * @readOnly
      */
 
     /**
@@ -652,6 +654,13 @@ var Body = require('./Body');
      * @property composites
      * @type composite[]
      * @default []
+     */
+
+    /**
+     * An object reserved for storing plugin-specific properties.
+     *
+     * @property plugin
+     * @type {}
      */
 
 })();

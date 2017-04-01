@@ -1,5 +1,6 @@
 {
     "rules": {
+        "no-fallthrough": 2,
         "no-console": 0,
         "no-unused-vars": 0,
         "indent": [
@@ -29,7 +30,6 @@
         "require": false,
         "PIXI": false,
         "$": false,
-        "Example": false,
         "Image": false,
         "navigator": false,
         "setTimeout": false,
@@ -63,7 +63,8 @@
         "Query": false,
         "Runner": false,
         "Svg": false,
-        "Metrics": false
+        "Metrics": false,
+        "Example": false
     },
     "extends": "eslint:recommended"
 }
